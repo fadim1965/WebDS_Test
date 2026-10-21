@@ -1,0 +1,158 @@
+@using Microsoft.Extensions.Options
+@model AdminCustomerDetailViewModel
+@inject IOptions<StoreSettings> StoreOptions
+@{
+    var currency = StoreOptions.Value.CurrencySymbol;
+    var customer = Model.Customer;
+    var averageOrderValue = Model.Orders.Count > 0 ? Model.LifetimeSpend / Model.Orders.Count : 0m;
+
+    string Money(decimal amount) => currency + amount.ToString("N2");
+    string Initial(string? name) => string.IsNullOrWhiteSpace(name) ? "?" : name.Trim()[..1].ToUpperInvariant();
+    string Plural(int count, string singular) => count == 1 ? $"{count} {singular}" : $"{count} {singular}s";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">@(string.IsNullOrWhiteSpace(customer.DisplayName) ? customer.Email : customer.DisplayName)</h2>
+        <p class="text-muted small mb-0">
+            Customer since @customer.CreatedUtc.ToString("d MMM yyyy")
+            @if (customer.LastLoginUtc is not null)
+            {
+                <span>· last signed in @customer.LastLoginUtc.Value.ToString("d MMM yyyy HH:mm")</span>
+            }
+        </p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Customers" asp-action="Index">Back to customers</a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-start gap-3">
+                    <span class="avatar-circle" aria-hidden="true">@Initial(customer.DisplayName)</span>
+                    <div>
+                        <div class="fw-semibold">@(string.IsNullOrWhiteSpace(customer.DisplayName) ? "—" : customer.DisplayName)</div>
+                        <div class="small"><a href="mailto:@customer.Email">@customer.Email</a></div>
+                        <div class="small text-muted">@(string.IsNullOrWhiteSpace(customer.Phone) ? "No phone on file" : customer.Phone)</div>
+
+                        <div class="mt-2">
+                            @foreach (var role in Model.Roles)
+                            {
+                                <span class="badge text-bg-light border me-1">@role</span>
+                            }
+                            @if (Model.Roles.Count == 0)
+                            {
+                                <span class="text-muted small">No roles</span>
+                            }
+                        </div>
+
+                        <div class="mt-2">
+                            @if (customer.IsActive)
+                            {
+                                <span class="badge text-bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Inactive</span>
+                            }
+                            @if (customer.IsLockedOut)
+                            {
+                                <span class="badge text-bg-danger">Locked out</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-4 text-lg-end">
+                @if (customer.IsActive)
+                {
+                    <form method="post" asp-area="Admin" asp-controller="Customers" asp-action="SetActive"
+                          onsubmit="return confirm('Deactivate this account? The customer will no longer be able to sign in.');">
+                        <input type="hidden" name="id" value="@customer.Id" />
+                        <input type="hidden" name="isActive" value="false" />
+                        <button type="submit" class="btn btn-outline-danger">Deactivate account</button>
+                    </form>
+                }
+                else
+                {
+                    <form method="post" asp-area="Admin" asp-controller="Customers" asp-action="SetActive">
+                        <input type="hidden" name="id" value="@customer.Id" />
+                        <input type="hidden" name="isActive" value="true" />
+                        <button type="submit" class="btn btn-outline-success">Reactivate account</button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Orders</div>
+                <div class="stat-value">@Model.Orders.Count</div>
+                <div class="small text-muted mt-1">Placed with this account</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Lifetime spend</div>
+                <div class="stat-value">@Money(Model.LifetimeSpend)</div>
+                <div class="small text-muted mt-1">Paid, shipped and delivered orders</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Average order value</div>
+                <div class="stat-value">@Money(averageOrderValue)</div>
+                <div class="small text-muted mt-1">Across @Plural(Model.Orders.Count, "order")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-white fw-semibold">Order history</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle table-sticky-head mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Order</th>
+                    <th scope="col">Placed</th>
+                    <th scope="col" class="text-end">Items</th>
+                    <th scope="col" class="text-end">Total</th>
+                    <th scope="col">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <td>
+                            <a class="fw-semibold text-decoration-none"
+                               asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">@order.OrderNumber</a>
+                        </td>
+                        <td class="small text-muted text-nowrap">@order.PlacedUtc.ToString("d MMM yyyy HH:mm")</td>
+                        <td class="text-end">@order.TotalQuantity</td>
+                        <td class="text-end text-nowrap">@Money(order.GrandTotal)</td>
+                        <td><span class="badge @order.Status.ToCssClass()">@order.Status.ToDisplay()</span></td>
+                    </tr>
+                }
+
+                @if (Model.Orders.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">This customer has not placed an order yet.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

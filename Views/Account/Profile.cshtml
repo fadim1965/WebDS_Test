@@ -1,0 +1,208 @@
+@model ProfileViewModel
+@using Microsoft.Extensions.Options
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    ViewData["Title"] = "Your account";
+
+    var currency = StoreOptions.Value.CurrencySymbol;
+    var user = Model.User;
+    var displayName = string.IsNullOrWhiteSpace(user.DisplayName) ? user.Email : user.DisplayName;
+    var initials = string.Concat(displayName
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Where(part => part.Length > 0)
+        .Take(2)
+        .Select(part => char.ToUpperInvariant(part[0])));
+    var isAdmin = Model.Roles.Any(role => string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase));
+
+    // The controller redirects after each post, so the inline messages are a safety net rather
+    // than the primary feedback (that is the flash alert in the layout).
+    var summaryClass = ViewData.ModelState.IsValid ? "text-danger small" : "alert alert-danger";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Your account</h1>
+    <form method="post" asp-controller="Account" asp-action="Logout">
+        <button class="btn btn-outline-secondary" type="submit">Sign out</button>
+    </form>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <span class="avatar-circle" aria-hidden="true">@initials</span>
+                    <div>
+                        <div class="h5 mb-0">@displayName</div>
+                        <div class="text-muted small">@user.Email</div>
+                    </div>
+                </div>
+
+                @if (Model.Roles.Count > 0)
+                {
+                    <div class="mb-3">
+                        <span class="text-muted small me-1">Roles</span>
+                        @foreach (var role in Model.Roles)
+                        {
+                            <span class="badge text-bg-secondary me-1">@role</span>
+                        }
+                    </div>
+                }
+
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-4 fw-normal text-muted">Member since</dt>
+                    <dd class="col-sm-8">@user.CreatedUtc.ToString("d MMM yyyy")</dd>
+
+                    <dt class="col-sm-4 fw-normal text-muted">Last sign-in</dt>
+                    <dd class="col-sm-8">
+                        @if (user.LastLoginUtc is { } lastLogin)
+                        {
+                            <span>@lastLogin.ToString("d MMM yyyy HH:mm") UTC</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">This is your first visit</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-4 fw-normal text-muted">Orders placed</dt>
+                    <dd class="col-sm-8">@Model.OrderCount</dd>
+
+                    <dt class="col-sm-4 fw-normal text-muted">Lifetime spend</dt>
+                    <dd class="col-sm-8">@currency@Model.LifetimeSpend.ToString("N2")</dd>
+                </dl>
+
+                @if (user.IsLockedOut)
+                {
+                    <div class="alert alert-warning small mt-3 mb-0" role="alert">
+                        This account is temporarily locked after too many failed sign-in attempts.
+                        Try again in a few minutes.
+                    </div>
+                }
+                else if (!user.IsActive)
+                {
+                    <div class="alert alert-danger small mt-3 mb-0" role="alert">
+                        This account is disabled. Contact support if that is unexpected.
+                    </div>
+                }
+
+                @if (isAdmin)
+                {
+                    <div class="alert alert-info small mt-3 mb-0 d-flex flex-wrap justify-content-between align-items-center gap-2" role="alert">
+                        <span>You have administrator access to the catalogue and orders.</span>
+                        <a class="btn btn-sm btn-dark" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
+                            Open admin dashboard
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Profile details</h2>
+
+                <form method="post" asp-controller="Account" asp-action="UpdateProfile">
+                    <div asp-validation-summary="ModelOnly" class="@summaryClass" role="alert"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="DisplayName"></label>
+                            <input class="form-control" asp-for="DisplayName" autocomplete="name" />
+                            <span class="text-danger small" asp-validation-for="DisplayName"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" asp-for="Phone"></label>
+                            <input class="form-control" asp-for="Phone" type="tel" autocomplete="tel" />
+                            <span class="text-danger small" asp-validation-for="Phone"></span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary mt-3" type="submit">Save changes</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Change password</h2>
+
+                <form method="post" asp-controller="Account" asp-action="ChangePassword">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label" for="CurrentPassword">Current password</label>
+                            <input class="form-control" id="CurrentPassword" name="CurrentPassword" type="password"
+                                   autocomplete="current-password" required />
+                            @Html.ValidationMessage("CurrentPassword", null, new { @class = "text-danger small" })
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="NewPassword">New password</label>
+                            <input class="form-control" id="NewPassword" name="NewPassword" type="password"
+                                   autocomplete="new-password" minlength="8" required />
+                            <div class="form-text">At least 8 characters.</div>
+                            @Html.ValidationMessage("NewPassword", null, new { @class = "text-danger small" })
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="ConfirmPassword">Confirm new password</label>
+                            <input class="form-control" id="ConfirmPassword" name="ConfirmPassword" type="password"
+                                   autocomplete="new-password" minlength="8" required />
+                            @Html.ValidationMessage("ConfirmPassword", null, new { @class = "text-danger small" })
+                        </div>
+                    </div>
+
+                    <button class="btn btn-outline-primary mt-3" type="submit">Update password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-muted mb-3">Quick links</h2>
+                <div class="d-grid gap-2">
+                    <a class="btn btn-outline-primary" asp-controller="Orders" asp-action="Index">Your orders</a>
+                    <a class="btn btn-outline-primary" asp-controller="Account" asp-action="Wishlist">Your wishlist</a>
+                    <a class="btn btn-outline-primary" asp-controller="Account" asp-action="Addresses">Address book</a>
+                    <a class="btn btn-outline-primary" asp-controller="Orders" asp-action="Track">Track an order</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6 text-uppercase text-muted mb-3">Saved addresses</h2>
+
+                @if (Model.Addresses.Count == 0)
+                {
+                    <p class="text-muted small">You have not saved an address yet.</p>
+                    <a class="btn btn-sm btn-outline-primary" asp-controller="Account" asp-action="EditAddress">Add an address</a>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-3">
+                        @foreach (var address in Model.Addresses)
+                        {
+                            <li class="border rounded p-2 mb-2">
+                                <div class="d-flex justify-content-between gap-2">
+                                    <div>
+                                        <span class="fw-semibold">@address.FullName</span>
+                                        @if (address.IsDefault)
+                                        {
+                                            <span class="badge text-bg-info ms-1">Default</span>
+                                        }
+                                    </div>
+                                    <a class="small" asp-controller="Account" asp-action="EditAddress" asp-route-id="@address.Id">Edit</a>
+                                </div>
+                                <div class="small text-muted">
+                                    @address.Line1, @address.City @address.PostalCode, @address.Country
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                    <a class="btn btn-sm btn-outline-primary" asp-controller="Account" asp-action="Addresses">Manage address book</a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

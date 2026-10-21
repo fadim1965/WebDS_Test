@@ -1,0 +1,24 @@
+## Build output
+bin/
+obj/
+*.user
+
+## Machine-local secrets (connection strings, provider keys) — never committed.
+## The committed appsettings files carry empty placeholders; see Program.cs.
+appsettings.Local.json
+appsettings.Local.*.json
+
+## SQLite database created on first run
+App_Data/
+*.db
+*.db-shm
+*.db-wal
+
+## The seeded database is regenerated automatically, so it is never committed.
+## Local tooling / editor state
+.vs/
+.vscode/
+.idea/
+
+## Node (only used for client-side library restoration)
+node_modules/

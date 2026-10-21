@@ -1,0 +1,11 @@
+/*
+    Scoped styles for Views/Shared/_Layout.cshtml.
+    The visual identity lives in wwwroot/css/brand.css and is driven by the
+    "Branding" configuration section; this file is intentionally minimal.
+*/
+
+.eshop-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}

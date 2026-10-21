@@ -1,0 +1,128 @@
+@using Microsoft.Extensions.Options
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    var store = StoreOptions.Value;
+    var currency = store.CurrencySymbol;
+    ViewData["Title"] = "Privacy and store policies";
+}
+
+<h1 class="h3 mb-2">Shipping, returns, payment and privacy</h1>
+<p class="text-muted">
+    How @store.Name works — delivery, returns, tax, payments and what we do with your data.
+</p>
+
+<div class="alert alert-info" role="alert">
+    <strong>This is a demonstration application.</strong>
+    Orders, payments and emails are simulated. Please do not enter real card details or personal
+    information you would not want stored in a demo database.
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <section class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Shipping and delivery</h2>
+                <p>
+                    We ship to the address you give at checkout. Everything in the seeded catalogue is dispatched
+                    within 1–2 business days, and delivery estimates are shown per product.
+                </p>
+                <ul class="mb-0">
+                    <li>
+                        <strong>Free shipping</strong> on orders of @currency@store.FreeShippingThreshold.ToString("N2") or more.
+                    </li>
+                    <li>
+                        <strong>Flat rate</strong> of @currency@store.FlatShippingRate.ToString("N2") on smaller orders.
+                    </li>
+                    <li>
+                        Shipping is calculated on the order subtotal, before tax, and is always shown in the cart
+                        and again before you place the order.
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Returns and refunds</h2>
+                <p class="mb-0">
+                    Unused items in their original packaging can be returned within 30 days of delivery.
+                    Refunds are issued to the original payment method — in this demo, that simply marks the
+                    order as refunded. Contact
+                    <a href="mailto:@store.SupportEmail">@store.SupportEmail</a> with your order number to start
+                    a return, or use the <a asp-controller="Orders" asp-action="Track">order tracking page</a>.
+                </p>
+            </div>
+        </section>
+
+        <section class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Tax</h2>
+                <p class="mb-0">
+                    Sales tax of @((store.TaxRate * 100).ToString("0.##"))% is applied to the order subtotal and is
+                    shown as a separate line in the cart and at checkout. Tax is calculated in
+                    @store.Currency, the store's single settlement currency.
+                </p>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-body">
+                <h2 class="h5">Payments</h2>
+                <p>
+                    Checkout runs against a <strong>sandbox payment gateway</strong>. No card is charged, no card
+                    details are requested or stored, and the payment record kept against your order is flagged as a
+                    test transaction.
+                </p>
+                <p class="mb-0">
+                    In a production deployment this page would describe the real provider, its terms and how card
+                    data is protected. Here it exists to show where that information belongs.
+                </p>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-lg-4">
+        <section class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Privacy and your data</h2>
+                <p class="small">
+                    This demo stores only what the storefront needs to work:
+                </p>
+                <ul class="small mb-3">
+                    <li>Account details you register: display name, email address and optional phone number.</li>
+                    <li>Addresses you save in your address book.</li>
+                    <li>Your cart, wishlist and order history.</li>
+                    <li>A session cookie that identifies an anonymous cart so it survives a page refresh.</li>
+                </ul>
+                <p class="small mb-0">
+                    Passwords are stored as salted PBKDF2 hashes, never as plain text. Order history keeps a
+                    snapshot of the product name, SKU and price you paid, so later catalogue edits never rewrite
+                    your receipts.
+                </p>
+            </div>
+        </section>
+
+        <section class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5">Cookies and tracking</h2>
+                <p class="small mb-0">
+                    One essential cookie keeps you signed in (optional — “keep me signed in” extends it to 14 days)
+                    and one keeps your cart. There is no advertising, analytics or third-party tracking of any kind,
+                    and no resources are loaded from external networks.
+                </p>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-body">
+                <h2 class="h5">Questions</h2>
+                <p class="small mb-2">
+                    Ask about an order, a return, or the data held against your account:
+                </p>
+                <p class="mb-0">
+                    <a href="mailto:@store.SupportEmail">@store.SupportEmail</a>
+                </p>
+            </div>
+        </section>
+    </div>
+</div>

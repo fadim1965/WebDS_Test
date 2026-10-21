@@ -1,0 +1,142 @@
+@model WebDS_Test.Controllers.HomeViewModel
+@using Microsoft.Extensions.Options
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    var store = StoreOptions.Value;
+}
+
+<section class="hero p-4 p-lg-5 mb-4">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+            <div class="hero-eyebrow mb-2">@store.Tagline</div>
+            <h1 class="display-5 fw-bold mb-3">Postal services and supplies, online.</h1>
+            <p class="lead mb-4 opacity-75">
+                Send registered mail and express parcels, rent a P.O. Box and order counter supplies —
+                with real stock levels, clear pricing and free delivery over @store.CurrencySymbol@store.FreeShippingThreshold.ToString("N2").
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-brand btn-lg" asp-controller="Catalog" asp-action="Index">
+                    Browse the eShop
+                </a>
+                <a class="btn btn-outline-light btn-lg" asp-controller="Catalog" asp-action="Index" asp-route-sort="@ProductSort.BestSelling">
+                    Shop best sellers
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="row g-2">
+                <div class="col-6">
+                    <div class="hero-stat">
+                        <div class="h4 mb-0">@Model.Featured.Count</div>
+                        <div class="small opacity-75">Featured products</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="hero-stat">
+                        <div class="h4 mb-0">Free</div>
+                        <div class="small opacity-75">Shipping over @store.CurrencySymbol@store.FreeShippingThreshold.ToString("N0")</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="hero-stat">
+                        <div class="h4 mb-0">@Model.Categories.Count</div>
+                        <div class="small opacity-75">Departments</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="hero-stat">
+                        <div class="h4 mb-0">@((store.TaxRate * 100).ToString("0.##"))%</div>
+                        <div class="small opacity-75">Tax shown up front</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@if (Model.Categories.Count > 0)
+{
+    <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h4 mb-0">Shop by department</h2>
+            <a class="small" asp-controller="Catalog" asp-action="Index">See everything</a>
+        </div>
+        <div class="row g-3">
+            @foreach (var category in Model.Categories)
+            {
+                <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+                    <a class="category-tile" asp-controller="Catalog" asp-action="Index" asp-route-category="@category.Slug">
+                        <div class="tile-icon">@category.Name.Substring(0, 1).ToUpperInvariant()</div>
+                        <div class="fw-semibold">@category.Name</div>
+                        @if (category.Children.Count > 0)
+                        {
+                            <div class="small text-muted">
+                                @string.Join(" · ", category.Children.Take(2).Select(c => c.Name))
+                                @if (category.Children.Count > 2)
+                                {
+                                    <text> +@(category.Children.Count - 2)</text>
+                                }
+                            </div>
+                        }
+                    </a>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+<section class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4 mb-0">Featured this week</h2>
+        <a class="small" asp-controller="Catalog" asp-action="Index">All products</a>
+    </div>
+
+    @if (Model.Featured.Count == 0)
+    {
+        <div class="alert alert-info mb-0">
+            No products are published yet. An administrator can add them from the
+            <a asp-area="Admin" asp-controller="Products" asp-action="Index">admin area</a>.
+        </div>
+    }
+    else
+    {
+        <div class="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3">
+            @foreach (var card in Model.Featured)
+            {
+                <div class="col">
+                    <partial name="_ProductCard" model="card" />
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@if (Model.BestSellers.Count > 0)
+{
+    <section class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h4 mb-0">Popular right now</h2>
+            <a class="small" asp-controller="Catalog" asp-action="Index" asp-route-sort="@ProductSort.BestSelling">More best sellers</a>
+        </div>
+        <div class="row row-cols-2 row-cols-md-3 row-cols-xl-4 g-3">
+            @foreach (var card in Model.BestSellers)
+            {
+                <div class="col">
+                    <partial name="_ProductCard" model="card" />
+                </div>
+            }
+        </div>
+    </section>
+}
+
+<section class="card mb-2">
+    <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+            <h2 class="h5 mb-1">Looking for an order?</h2>
+            <p class="mb-0 text-muted small">
+                Enter your order number and email address to see its current status — no account required.
+            </p>
+        </div>
+        <a class="btn btn-primary" asp-controller="Orders" asp-action="Track">Track an order</a>
+    </div>
+</section>

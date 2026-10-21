@@ -1,0 +1,114 @@
+@model WebDS_Test.Controllers.RequestReturnViewModel
+@inject Microsoft.Extensions.Options.IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    ViewData["Title"] = $"Request a return — order {Model.OrderNumber}";
+    var currency = StoreOptions.Value.CurrencySymbol;
+
+    string Money(decimal value) => currency + value.ToString("N2");
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Your orders</a></li>
+            <li class="breadcrumb-item"><a asp-action="Details" asp-route-id="@Model.OrderId">Order @Model.OrderNumber</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Request a return</li>
+        </ol>
+    </nav>
+
+    <h1 class="h3 mb-1">Request a return</h1>
+    <p class="text-muted">
+        Choose what to send back from order <strong>@Model.OrderNumber</strong> and tell the shop why.
+        The shop approves or rejects the request; the refund is issued once the goods are received.
+    </p>
+
+    @if (!Model.ReturnableStatus)
+    {
+        <div class="alert alert-warning">
+            This order cannot be returned yet — returns open once the order is paid, and close once it is refunded or cancelled.
+        </div>
+    }
+    else if (Model.OpenReturnExists)
+    {
+        <div class="alert alert-info">
+            This order already has an open return request. You can follow it on the
+            <a asp-action="Details" asp-route-id="@Model.OrderId">order page</a>.
+        </div>
+    }
+
+    @if (Model.CanRequest && Model.Lines.Any(l => l.MaxQuantity > 0))
+    {
+        <form asp-action="RequestReturn" method="post" class="card">
+            <input type="hidden" asp-for="OrderId" />
+            <div asp-validation-summary="ModelOnly" class="text-danger m-3"></div>
+            <div class="card-header bg-white fw-semibold">Items to return</div>
+
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Product</th>
+                            <th scope="col" class="text-end">Ordered</th>
+                            <th scope="col" class="text-end">Returnable</th>
+                            <th scope="col" class="text-center" style="width:10rem;">Return qty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < Model.Lines.Count; i++)
+                        {
+                            var line = Model.Lines[i];
+                            <tr>
+                                <td>
+                                    <div>@line.ProductName</div>
+                                    @if (!string.IsNullOrWhiteSpace(line.VariantName))
+                                    {
+                                        <div class="small text-muted">@line.VariantName</div>
+                                    }
+                                </td>
+                                <td class="text-end text-nowrap">@line.OrderedQuantity × @Money(line.UnitPrice)</td>
+                                <td class="text-end">@line.MaxQuantity</td>
+                                <td class="text-center">
+                                    <input type="hidden" name="Lines[@i].OrderLineId" value="@line.OrderLineId" />
+                                    @if (line.MaxQuantity > 0)
+                                    {
+                                        <input type="number" name="Lines[@i].Quantity" value="0"
+                                               min="0" max="@line.MaxQuantity" step="1"
+                                               class="form-control form-control-sm mx-auto" style="max-width:6rem;"
+                                               aria-label="Quantity to return for @line.ProductName" />
+                                    }
+                                    else
+                                    {
+                                        <input type="number" value="0" disabled class="form-control form-control-sm mx-auto" style="max-width:6rem;" />
+                                        <span class="small text-muted">fully returned</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card-body">
+                <label asp-for="Note" class="form-label fw-semibold"></label>
+                <textarea asp-for="Note" rows="3" class="form-control"
+                          placeholder="For example: arrived damaged, wrong size, no longer needed…"></textarea>
+                <span asp-validation-for="Note" class="text-danger small"></span>
+            </div>
+
+            <div class="card-footer bg-white d-flex gap-2 justify-content-end">
+                <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.OrderId">Back to order</a>
+                <button type="submit" class="btn btn-primary">Send return request</button>
+            </div>
+        </form>
+    }
+    else if (!Model.OpenReturnExists && Model.ReturnableStatus)
+    {
+        <div class="alert alert-secondary">
+            Every item on this order has already been returned.
+        </div>
+    }
+    else
+    {
+        <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.OrderId">Back to order</a>
+    }
+</div>

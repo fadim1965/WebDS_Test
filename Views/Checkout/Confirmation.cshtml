@@ -1,0 +1,100 @@
+@model WebDS_Test.Domain.Order
+@{
+    ViewData["Title"] = "Order confirmed";
+}
+<div class="row g-4">
+    <div class="col-lg-8">
+        <h1 class="h3 mb-3">Thank you — order @Model.OrderNumber</h1>
+        <p class="text-muted">
+            A confirmation is on its way to @Model.Email. Payment is collected on delivery, so nothing
+            is charged now.
+        </p>
+
+        <div class="card mb-3">
+            <div class="card-header"><h2 class="h6 mb-0">Items</h2></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Product</th>
+                                <th scope="col" class="text-end">Unit price</th>
+                                <th scope="col" class="text-end">Qty</th>
+                                <th scope="col" class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in Model.Lines)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">@line.ProductName</div>
+                                        @if (!string.IsNullOrWhiteSpace(line.VariantName))
+                                        {
+                                            <div class="small text-muted">@line.VariantName</div>
+                                        }
+                                    </td>
+                                    <td class="text-end">@line.UnitPrice.ToString("N2")</td>
+                                    <td class="text-end">@line.Quantity</td>
+                                    <td class="text-end">@line.LineTotal.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2 class="h6 mb-0">Delivering to</h2></div>
+            <div class="card-body">
+                <address class="mb-0">
+                    <strong>@Model.ShippingName</strong><br />
+                    @Model.ShippingLine1<br />
+                    @if (!string.IsNullOrWhiteSpace(Model.ShippingLine2))
+                    {
+                        @Model.ShippingLine2
+                        <br />
+                    }
+                    @Model.ShippingCity@(!string.IsNullOrWhiteSpace(Model.ShippingState) ? $", {Model.ShippingState}" : string.Empty) @Model.ShippingPostalCode<br />
+                    @Model.ShippingCountry
+                </address>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><h2 class="h6 mb-0">Summary</h2></div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Subtotal</span>
+                    <span>@Model.Subtotal.ToString("N2")</span>
+                </div>
+
+                @if (Model.DiscountTotal > 0m)
+                {
+                    <div class="d-flex justify-content-between mb-1 text-success">
+                        <span>Discount @(string.IsNullOrWhiteSpace(Model.CouponCode) ? string.Empty : $"({Model.CouponCode})")</span>
+                        <span>−@Model.DiscountTotal.ToString("N2")</span>
+                    </div>
+                }
+
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Shipping</span>
+                    <span>@(Model.ShippingTotal == 0m ? "Free" : Model.ShippingTotal.ToString("N2"))</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Tax</span>
+                    <span>@Model.TaxTotal.ToString("N2")</span>
+                </div>
+                <div class="d-flex justify-content-between border-top pt-2 mt-2 fw-bold fs-5">
+                    <span>Total due on delivery</span>
+                    <span>@Model.GrandTotal.ToString("N2")</span>
+                </div>
+
+                <a asp-controller="Orders" asp-action="Index" class="btn btn-outline-primary w-100 mt-3">View my orders</a>
+            </div>
+        </div>
+    </div>
+</div>

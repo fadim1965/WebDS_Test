@@ -1,0 +1,106 @@
+/* ==========================================================================
+   i18n.css — right-to-left support and language-switcher styling.
+
+   Arabic reads right to left. Setting dir="rtl" on <html> is not enough on its
+   own: several parts of the chrome are positioned with physical properties, so
+   the mirroring is done explicitly here rather than assumed.
+   ========================================================================== */
+
+/* ---------- Typography ---------------------------------------------------- */
+
+html[dir="rtl"] body {
+    font-family: 'Segoe UI', Tahoma, 'Noto Naskh Arabic', 'Geeza Pro', Arial, sans-serif;
+    line-height: 1.7;
+}
+
+/* Arabic glyphs sit lower in the line box than Latin ones, so headings need
+   more leading or the descenders collide with the next line. */
+html[dir="rtl"] h1,
+html[dir="rtl"] h2,
+html[dir="rtl"] h3,
+html[dir="rtl"] .brand-wordmark {
+    line-height: 1.5;
+}
+
+/* A price or an order number stays left-to-right even inside Arabic text:
+   "24.50" must not render as "50.42", and an order number must stay readable. */
+html[dir="rtl"] .price-now,
+html[dir="rtl"] .price-was,
+html[dir="rtl"] code,
+html[dir="rtl"] .stock-ribbon,
+html[dir="rtl"] .stat-value,
+html[dir="rtl"] .badge,
+html[dir="rtl"] [dir="ltr"] {
+    direction: ltr;
+    unicode-bidi: embed;
+}
+
+/* ---------- Mirrored chrome ----------------------------------------------- */
+
+/* The thumb badges and stock ribbon sit on the inline start edge. */
+html[dir="rtl"] .thumb-badges {
+    left: auto;
+    right: .55rem;
+    align-items: flex-end;
+}
+
+html[dir="rtl"] .product-thumb,
+html[dir="rtl"] .product-thumb img {
+    transform: scaleX(-1);
+}
+html[dir="rtl"] .card-hover:hover .product-thumb img {
+    transform: scaleX(-1) scale(1.04);
+}
+
+html[dir="rtl"] .brand-search .form-control {
+    border-radius: 0 var(--brand-radius) var(--brand-radius) 0;
+    border-left: none;
+    border-right: 1px solid var(--brand-border-strong);
+}
+
+html[dir="rtl"] .brand-search .btn {
+    border-radius: var(--brand-radius) 0 0 var(--brand-radius);
+}
+
+html[dir="rtl"] .brand-channeltab {
+    border-radius: 20px 20px 0 0;
+}
+
+html[dir="rtl"] .review-bar-label {
+    text-align: right;
+}
+
+html[dir="rtl"] .review-reply {
+    border-left: none;
+    border-right: 3px solid var(--brand-primary-tint);
+    border-radius: var(--brand-radius) 0 0 var(--brand-radius);
+}
+
+html[dir="rtl"] .sparkline-tooltip,
+html[dir="rtl"] .mini-bar-column label {
+    left: auto;
+    right: 50%;
+    transform: translateX(50%);
+}
+
+/* ---------- Language switcher ---------------------------------------------- */
+
+.language-select {
+    background-color: transparent;
+    color: #fff;
+    border-color: rgba(255, 255, 255, .35);
+    font-size: 13px;
+    padding: .1rem 1.4rem .1rem .4rem;
+    width: auto;
+}
+
+.language-select option {
+    /* The native dropdown paints its own background, so the option must be
+       dark or white-on-white is unreadable in every browser. */
+    background-color: #1c2a38;
+    color: #fff;
+}
+
+html[dir="rtl"] .language-select {
+    padding: .1rem .4rem .1rem 1.4rem;
+}

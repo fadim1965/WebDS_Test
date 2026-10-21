@@ -1,0 +1,96 @@
+@model WebDS_Test.Domain.Coupon
+@{
+    var shops = ViewData["Shops"] as Microsoft.AspNetCore.Mvc.Rendering.SelectList;
+}
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+<input type="hidden" asp-for="Id" />
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-12 col-md-4">
+                <label class="form-label required-label" asp-for="Code">Code</label>
+                <input asp-for="Code" class="form-control text-uppercase" placeholder="e.g. SUMMER10" autocomplete="off" />
+                <div class="form-text">Matched case-insensitively; stored upper-cased.</div>
+                <span asp-validation-for="Code" class="text-danger small"></span>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label class="form-label" asp-for="Type">Type</label>
+                <select asp-for="Type" class="form-select" asp-items="Html.GetEnumSelectList<DiscountType>()"></select>
+                <span asp-validation-for="Type" class="text-danger small"></span>
+            </div>
+
+            <div class="col-12 col-md-4">
+                <label class="form-label" asp-for="Value">Value</label>
+                <input asp-for="Value" type="number" step="0.01" min="0" class="form-control" />
+                <div class="form-text">A percentage (0–100) or a fixed amount off.</div>
+                <span asp-validation-for="Value" class="text-danger small"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="MinSubtotal">Minimum spend</label>
+                <input asp-for="MinSubtotal" type="number" step="0.01" min="0" class="form-control" />
+                <div class="form-text">Zero means the code applies to any basket.</div>
+                <span asp-validation-for="MinSubtotal" class="text-danger small"></span>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label" asp-for="MaxUses">Total uses</label>
+                <input asp-for="MaxUses" type="number" min="1" class="form-control" placeholder="unlimited" />
+                <span asp-validation-for="MaxUses" class="text-danger small"></span>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label" asp-for="MaxUsesPerUser">Uses per shopper</label>
+                <input asp-for="MaxUsesPerUser" type="number" min="1" class="form-control" placeholder="unlimited" />
+                <div class="form-text">Applies to signed-in shoppers only.</div>
+                <span asp-validation-for="MaxUsesPerUser" class="text-danger small"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="StartsUtc">Starts (UTC)</label>
+                <input asp-for="StartsUtc" type="datetime-local" class="form-control" />
+                <span asp-validation-for="StartsUtc" class="text-danger small"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="ExpiresUtc">Expires (UTC)</label>
+                <input asp-for="ExpiresUtc" type="datetime-local" class="form-control" />
+                <span asp-validation-for="ExpiresUtc" class="text-danger small"></span>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label" asp-for="Description">Internal note</label>
+                <input asp-for="Description" class="form-control" placeholder="e.g. Spring campaign — newsletter" />
+                <div class="form-text">Never shown to shoppers.</div>
+                <span asp-validation-for="Description" class="text-danger small"></span>
+            </div>
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input asp-for="AppliesToAll" class="form-check-input" />
+                    <label asp-for="AppliesToAll" class="form-check-label">Applies to every shop</label>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" asp-for="ShopId">Shop</label>
+                <select asp-for="ShopId" asp-items="shops" class="form-select">
+                    <option value="">— any shop —</option>
+                </select>
+                <div class="form-text">Only used when the coupon is restricted to a single shop.</div>
+                <span asp-validation-for="ShopId" class="text-danger small"></span>
+            </div>
+
+            <div class="col-12">
+                <div class="form-check">
+                    <input asp-for="IsActive" class="form-check-input" />
+                    <label asp-for="IsActive" class="form-check-label">Active</label>
+                    <div class="form-text">Inactive codes are rejected even inside their validity window.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

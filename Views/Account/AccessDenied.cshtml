@@ -1,0 +1,31 @@
+@using Microsoft.Extensions.Options
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    ViewData["Title"] = "Access denied";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-body text-center p-5">
+                <div class="display-5 mb-2" aria-hidden="true">403</div>
+                <h1 class="h3 mb-2">You do not have access to that page</h1>
+                <p class="text-muted mb-4">
+                    Your account does not have permission to view this area. If you were trying to reach your
+                    account, orders or address book, sign in with the right account and try again.
+                </p>
+
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Sign in</a>
+                    <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Back to the store</a>
+                    <a class="btn btn-outline-secondary" asp-controller="Catalog" asp-action="Index">Browse products</a>
+                </div>
+
+                <p class="text-muted small mb-0 mt-4">
+                    Think this is a mistake? Contact
+                    <a href="mailto:@StoreOptions.Value.SupportEmail">@StoreOptions.Value.SupportEmail</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

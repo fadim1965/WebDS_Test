@@ -1,0 +1,373 @@
+@using Microsoft.Extensions.Options
+@model WebDS_Test.Domain.Order
+@inject IOptions<StoreSettings> StoreOptions
+@{
+    var currency = StoreOptions.Value.CurrencySymbol;
+    var status = Model.Status;
+    var transitions = status.AllowedTransitions();
+
+    string Money(decimal amount) => currency + amount.ToString("N2");
+
+    // A step is reached when its timestamp exists or the order has already moved past it.
+    bool Reached(OrderStatus step) => step switch
+    {
+        OrderStatus.Pending => true,
+        OrderStatus.Paid => Model.PaidUtc is not null || (status is OrderStatus.Paid or OrderStatus.Shipped or OrderStatus.Delivered),
+        OrderStatus.Shipped => Model.ShippedUtc is not null || (status is OrderStatus.Shipped or OrderStatus.Delivered),
+        OrderStatus.Delivered => Model.DeliveredUtc is not null || status == OrderStatus.Delivered,
+        _ => false
+    };
+
+    string StepClass(OrderStatus step) => status == step ? "current" : Reached(step) ? "done" : string.Empty;
+
+    string PaymentClass(PaymentStatus paymentStatus) => paymentStatus switch
+    {
+        PaymentStatus.Succeeded => "text-bg-success",
+        PaymentStatus.Pending => "text-bg-warning",
+        PaymentStatus.Failed => "text-bg-danger",
+        PaymentStatus.Refunded => "text-bg-secondary",
+        _ => "text-bg-secondary"
+    };
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Order @Model.OrderNumber</h2>
+        <p class="text-muted small mb-0">
+            Placed @Model.PlacedUtc.ToString("d MMM yyyy HH:mm")
+            <span class="badge @status.ToCssClass() ms-1">@status.ToDisplay()</span>
+        </p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Orders" asp-action="Index">Back to orders</a>
+</div>
+
+@* ---- Action panel: only the transitions the service will accept are offered. ---- *@
+<div class="card mb-3">
+    <div class="card-header bg-white fw-semibold">Update fulfilment</div>
+    <div class="card-body">
+        @if (transitions.Count == 0)
+        {
+            <p class="text-muted mb-0">
+                This order is in a final state (@status.ToDisplay()), so there is nothing left to change.
+            </p>
+        }
+        else
+        {
+            <form method="post" asp-area="Admin" asp-controller="Orders" asp-action="UpdateStatus" class="row g-2 align-items-end">
+                <input type="hidden" name="id" value="@Model.Id" />
+
+                <div class="col-12 col-md-4">
+                    <label class="form-label" for="status">New status</label>
+                    <select class="form-select" id="status" name="status">
+                        @foreach (var target in transitions)
+                        {
+                            <option value="@target">@target.ToDisplay()</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="col-12 col-md-5">
+                    <label class="form-label" for="trackingNumber">Tracking number (used when marking as shipped)</label>
+                    <input class="form-control" type="text" id="trackingNumber" name="trackingNumber" value="@Model.TrackingNumber" />
+                </div>
+
+                <div class="col-12 col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">Update status</button>
+                </div>
+            </form>
+        }
+    </div>
+</div>
+
+@* ---- Timeline ---- *@
+<div class="card mb-3">
+    <div class="card-header bg-white fw-semibold">Progress</div>
+    <div class="card-body">
+        <ol class="status-steps mb-0">
+            <li class="@StepClass(OrderStatus.Pending)">
+                <div class="fw-semibold">Pending payment</div>
+                <div class="small text-muted">@Model.PlacedUtc.ToString("d MMM yyyy HH:mm")</div>
+            </li>
+            <li class="@StepClass(OrderStatus.Paid)">
+                <div class="fw-semibold">Paid</div>
+                <div class="small text-muted">@(Model.PaidUtc?.ToString("d MMM yyyy HH:mm") ?? "not yet")</div>
+            </li>
+            <li class="@StepClass(OrderStatus.Shipped)">
+                <div class="fw-semibold">Shipped</div>
+                <div class="small text-muted">@(Model.ShippedUtc?.ToString("d MMM yyyy HH:mm") ?? "not yet")</div>
+            </li>
+            <li class="@StepClass(OrderStatus.Delivered)">
+                <div class="fw-semibold">Delivered</div>
+                <div class="small text-muted">@(Model.DeliveredUtc?.ToString("d MMM yyyy HH:mm") ?? "not yet")</div>
+            </li>
+        </ol>
+
+        @if (Model.CancelledUtc is not null)
+        {
+            <p class="small text-danger mb-0 mt-3">
+                @(status == OrderStatus.Refunded ? "Refunded" : "Cancelled")
+                @Model.CancelledUtc.Value.ToString("d MMM yyyy HH:mm")
+            </p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.TrackingNumber))
+        {
+            <p class="small mb-0 mt-3">
+                Tracking number: <strong>@Model.TrackingNumber</strong>
+                @if (Model.ShippedUtc is not null)
+                {
+                    <span class="text-muted">· shipped @Model.ShippedUtc.Value.ToString("d MMM yyyy HH:mm")</span>
+                }
+            </p>
+        }
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">Customer</div>
+            <div class="card-body">
+                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.CustomerName) ? "—" : Model.CustomerName)</div>
+                <div class="small">
+                    <a href="mailto:@Model.Email">@Model.Email</a>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(Model.Phone))
+                {
+                    <div class="small text-muted">@Model.Phone</div>
+                }
+                <div class="small text-muted mt-2">
+                    @if (Model.UserId is not null)
+                    {
+                        <a asp-area="Admin" asp-controller="Customers" asp-action="Details" asp-route-id="@Model.UserId">View customer account</a>
+                    }
+                    else
+                    {
+                        <span>Guest checkout — no account</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">Shipping address</div>
+            <div class="card-body">
+                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.ShippingName) ? "—" : Model.ShippingName)</div>
+                <address class="mb-2 small">
+                    @Model.ShippingLine1<br />
+                    @if (!string.IsNullOrWhiteSpace(Model.ShippingLine2))
+                    {
+                        @(Model.ShippingLine2)
+                        <br />
+                    }
+                    @Model.ShippingCity@(string.IsNullOrWhiteSpace(Model.ShippingState) ? string.Empty : ", " + Model.ShippingState) @Model.ShippingPostalCode<br />
+                    @Model.ShippingCountry
+                </address>
+                <div class="small text-muted">@Model.ShippingSummary</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.CustomerNote))
+{
+    <div class="alert alert-info" role="alert">
+        <div class="fw-semibold">Customer note</div>
+        <div class="mb-0">@Model.CustomerNote</div>
+    </div>
+}
+
+@* ---- Lines ---- *@
+<div class="card mb-3">
+    <div class="card-header bg-white fw-semibold">Items</div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Product</th>
+                    <th scope="col">SKU</th>
+                    <th scope="col" class="text-end">Qty</th>
+                    <th scope="col" class="text-end">Unit price</th>
+                    <th scope="col" class="text-end">Line total</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                @if (!string.IsNullOrWhiteSpace(line.ImageUrl))
+                                {
+                                    <img src="@line.ImageUrl" alt="@line.ProductName" class="product-thumb-sm rounded border"
+                                         style="width:44px;height:44px;object-fit:cover;" />
+                                }
+                                <div>
+                                    <div>@(string.IsNullOrWhiteSpace(line.ProductName) ? "—" : line.ProductName)</div>
+                                    @if (!string.IsNullOrWhiteSpace(line.VariantName))
+                                    {
+                                        <div class="small text-muted">@line.VariantName</div>
+                                    }
+                                </div>
+                            </div>
+                        </td>
+                        <td><code class="small">@line.Sku</code></td>
+                        <td class="text-end">@line.Quantity</td>
+                        <td class="text-end text-nowrap">@Money(line.UnitPrice)</td>
+                        <td class="text-end text-nowrap">@Money(line.LineTotal)</td>
+                    </tr>
+                }
+
+                @if (Model.Lines.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">This order has no lines.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6 offset-lg-6">
+        <div class="card">
+            <div class="card-header bg-white fw-semibold">Totals</div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-7 fw-normal">Subtotal</dt>
+                    <dd class="col-5 text-end">@Money(Model.Subtotal)</dd>
+
+                    <dt class="col-7 fw-normal">Shipping</dt>
+                    <dd class="col-5 text-end">@(Model.ShippingTotal > 0 ? Money(Model.ShippingTotal) : "Free")</dd>
+
+                    <dt class="col-7 fw-normal">Tax</dt>
+                    <dd class="col-5 text-end">@Money(Model.TaxTotal)</dd>
+
+                    @if (Model.DiscountTotal > 0)
+                    {
+                        <dt class="col-7 fw-normal">Discount</dt>
+                        <dd class="col-5 text-end text-success">−@Money(Model.DiscountTotal)</dd>
+                    }
+
+                    <dt class="col-7 fw-semibold border-top pt-2">Grand total</dt>
+                    <dd class="col-5 text-end fw-semibold border-top pt-2">@Money(Model.GrandTotal)</dd>
+
+                    @if (Model.RefundedTotal > 0)
+                    {
+                        <dt class="col-7 fw-normal text-danger">Refunded so far</dt>
+                        <dd class="col-5 text-end text-danger">−@Money(Model.RefundedTotal)</dd>
+
+                        <dt class="col-7 fw-semibold">Still owed to shopper</dt>
+                        <dd class="col-5 text-end fw-semibold">@Money(Model.GrandTotal - Model.RefundedTotal)</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ---- Payments ---- *@
+@{
+    var orderReturns = ViewData["Returns"] as IReadOnlyList<WebDS_Test.Domain.ReturnRequest>;
+}
+@if (orderReturns is { Count: > 0 })
+{
+    <div class="card mb-3">
+        <div class="card-header bg-white fw-semibold">
+            Returns
+            <a class="btn btn-sm btn-outline-primary float-end" asp-area="Admin" asp-controller="Returns" asp-action="Index">Returns queue</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Reference</th>
+                        <th>Requested</th>
+                        <th class="text-center">Units</th>
+                        <th class="text-end">Refunded</th>
+                        <th>Status</th>
+                        <th>Note</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var request in orderReturns)
+                    {
+                        <tr>
+                            <td><strong>@request.Reference</strong></td>
+                            <td class="small">@request.RequestedUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td class="text-center">@request.Lines.Sum(l => l.Quantity)</td>
+                            <td class="text-end text-nowrap">
+                                @(request.Status == ReturnStatus.Refunded ? Money(request.RefundAmount) : "—")
+                            </td>
+                            <td><span class="badge @request.Status.ToCssClass()">@request.Status.ToDisplay()</span></td>
+                            <td class="small text-muted">
+                                @if (!string.IsNullOrWhiteSpace(request.CustomerNote))
+                                {
+                                    <div title="@request.CustomerNote">@request.CustomerNote</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(request.DecisionNote))
+                                {
+                                    <div title="@request.DecisionNote">Shop: @request.DecisionNote</div>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" asp-area="Admin" asp-controller="Returns" asp-action="Details" asp-route-id="@request.Id">Open</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@* ---- Payments (full rows) ---- *@
+<div class="card mb-3">
+    <div class="card-header bg-white fw-semibold">Payments</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Provider</th>
+                    <th scope="col">Transaction</th>
+                    <th scope="col" class="text-end">Amount</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Failure reason</th>
+                    <th scope="col">Created</th>
+                    <th scope="col">Completed</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var payment in Model.Payments)
+                {
+                    <tr>
+                        <td>
+                            @(string.IsNullOrWhiteSpace(payment.Provider) ? "—" : payment.Provider)
+                            @if (payment.IsTest)
+                            {
+                                <span class="badge text-bg-light border">test</span>
+                            }
+                        </td>
+                        <td class="small"><code>@(string.IsNullOrWhiteSpace(payment.TransactionId) ? "—" : payment.TransactionId)</code></td>
+                        <td class="text-end text-nowrap">@Money(payment.Amount) <span class="text-muted small">@payment.Currency</span></td>
+                        <td><span class="badge @PaymentClass(payment.Status)">@payment.Status</span></td>
+                        <td class="small text-danger">@(string.IsNullOrWhiteSpace(payment.FailureReason) ? "—" : payment.FailureReason)</td>
+                        <td class="small text-muted text-nowrap">@payment.CreatedUtc.ToString("d MMM yyyy HH:mm")</td>
+                        <td class="small text-muted text-nowrap">@(payment.CompletedUtc?.ToString("d MMM yyyy HH:mm") ?? "—")</td>
+                    </tr>
+                }
+
+                @if (Model.Payments.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">No payment has been recorded for this order.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

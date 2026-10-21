@@ -1,0 +1,182 @@
+@model WebDS_Test.Controllers.ShopStorefrontViewModel
+@using Microsoft.Extensions.Options
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@inject IOptions<ReviewSettings> ReviewOptions
+@{
+    var shop = Model.Shop;
+    var theme = Model.Theme;
+    var currency = StoreOptions.Value.CurrencySymbol;
+    ViewData["Title"] = shop.Name;
+
+    // Reputation: the average of every review left against this shop's products, and the accolade
+    // those numbers earn under the configured thresholds.
+    var rating = Model.Rating;
+    var badge = rating.Badge(ReviewOptions.Value);
+
+    // A supplied banner becomes the hero background. The gradient scrim is layered over it so
+    // white hero text stays readable regardless of the photograph.
+    var heroStyle = string.IsNullOrWhiteSpace(shop.BannerUrl)
+        ? null
+        : $"background-image:linear-gradient(115deg,rgba(9,14,24,.78),rgba(9,14,24,.30)),url('{shop.BannerUrl}')";
+}
+<div class="container py-4">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">eShop</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Shops" asp-action="Index">Shops</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@shop.Name</li>
+        </ol>
+    </nav>
+
+    <section class="shop-hero @(heroStyle is null ? "" : "has-banner")" style="@heroStyle">
+        <div class="shop-hero-inner">
+            @if (!string.IsNullOrWhiteSpace(shop.LogoUrl))
+            {
+                <img class="shop-hero-logo" src="@shop.LogoUrl" alt="@shop.Name logo" />
+            }
+            <div>
+                <div class="shop-hero-eyebrow">@theme.Name template</div>
+                <h1 class="h2 mb-1">@shop.Name</h1>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                    @if (rating.HasRatings)
+                    {
+                        <partial name="_Stars" model="@(new StarRating(rating.Average, rating.Count))" />
+                        <span class="shop-hero-meta">
+                            @rating.Average.ToString("0.0") ·
+                            @rating.Count review@(rating.Count == 1 ? string.Empty : "s")
+                        </span>
+                    }
+                    @if (badge != SellerBadge.None)
+                    {
+                        <span class="badge @badge.ToCssClass()">@badge.ToDisplay()</span>
+                    }
+                </div>
+                @if (!string.IsNullOrWhiteSpace(shop.Tagline))
+                {
+                    <p class="shop-hero-tagline">@shop.Tagline</p>
+                }
+                <div class="shop-hero-meta">
+                    @if (!string.IsNullOrWhiteSpace(shop.City))
+                    {
+                        <span>@shop.City@(string.IsNullOrWhiteSpace(shop.Country) ? "" : $", {shop.Country}")</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(shop.PickupLocation))
+                    {
+                        <span>Pickup: @shop.PickupLocation</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(shop.Website))
+                    {
+                        <a href="@shop.Website" target="_blank" rel="noopener">@shop.Website</a>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(shop.Description))
+    {
+        <div class="shop-panel p-3 mt-3">
+            <p class="mb-0">@shop.Description</p>
+        </div>
+    }
+
+    <div class="row g-4 mt-1">
+        <aside class="col-lg-3">
+            <div class="shop-panel p-3">
+                <form method="get" asp-action="Details" asp-route-slug="@shop.Slug">
+                    <label class="form-label small text-uppercase fw-bold" for="shopSearch">Search this shop</label>
+                    <div class="input-group input-group-sm mb-3">
+                        <input class="form-control" id="shopSearch" type="search" name="q" value="@Context.Request.Query["q"]" placeholder="Find a product" />
+                        <button class="btn btn-primary" type="submit">Go</button>
+                    </div>
+
+                    @if (Model.Categories.Count > 0)
+                    {
+                        <label class="form-label small text-uppercase fw-bold" for="shopCategory">Department</label>
+                        <select class="form-select form-select-sm mb-3" id="shopCategory" name="category" onchange="this.form.submit()">
+                            <option value="">All departments</option>
+                            @foreach (var category in Model.Categories)
+                            {
+                                <option value="@category.Slug" selected="@(Context.Request.Query["category"] == category.Slug)">@category.Name</option>
+                            }
+                        </select>
+                    }
+
+                    <label class="form-label small text-uppercase fw-bold" for="shopSort">Sort by</label>
+                    <select class="form-select form-select-sm mb-3" id="shopSort" name="sort" onchange="this.form.submit()">
+                        @foreach (var value in Enum.GetValues<ProductSort>())
+                        {
+                            <option value="@value" selected="@(Context.Request.Query["sort"] == value.ToString())">@value.ToDisplay()</option>
+                        }
+                    </select>
+
+                    <button class="btn btn-brand btn-sm w-100" type="submit">Apply</button>
+                </form>
+
+                @if (Model.Brands.Count > 0)
+                {
+                    <hr />
+                    <div class="small text-uppercase fw-bold mb-2">Brands</div>
+                    <div class="d-flex flex-wrap gap-1">
+                        @foreach (var brand in Model.Brands)
+                        {
+                            <a class="badge text-bg-light border text-decoration-none"
+                               asp-action="Details" asp-route-slug="@shop.Slug" asp-route-brand="@brand">@brand</a>
+                        }
+                    </div>
+                }
+            </div>
+        </aside>
+
+        <div class="col-lg-9">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div>
+                    <span class="shop-theme-flag" title="This shop's chosen template theme">@theme.Name</span>
+                    <span class="text-muted ms-2 small">
+                        @Model.Results.TotalCount product@(Model.Results.TotalCount == 1 ? "" : "s")
+                    </span>
+                </div>
+                @if (shop.IsFeatured)
+                {
+                    <span class="badge text-bg-warning">Featured shop</span>
+                }
+            </div>
+
+            @if (Model.Results.Items.Count == 0)
+            {
+                <div class="shop-panel p-5 text-center text-muted">
+                    <p class="mb-1">This shop has no products matching your search yet.</p>
+                    <a class="btn btn-outline-primary btn-sm" asp-action="Details" asp-route-slug="@shop.Slug">Clear filters</a>
+                </div>
+            }
+            else
+            {
+                <div class="row g-3">
+                    @foreach (var card in Model.Results.Items)
+                    {
+                        <div class="col-6 col-md-4">
+                            <partial name="_ProductCard" model="card" />
+                        </div>
+                    }
+                </div>
+
+                @if (Model.Results.TotalPages > 1)
+                {
+                    <nav class="mt-4" aria-label="Shop pages">
+                        <ul class="pagination">
+                            @for (var p = 1; p <= Model.Results.TotalPages; p++)
+                            {
+                                <li class="page-item @(p == Model.Results.Page ? "active" : "")">
+                                    <a class="page-link" asp-action="Details" asp-route-slug="@shop.Slug"
+                                       asp-route-page="@p" asp-route-q="@Context.Request.Query["q"]"
+                                       asp-route-category="@Context.Request.Query["category"]">@p</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            }
+        </div>
+    </div>
+</div>

@@ -1,0 +1,85 @@
+@model ShopDirectoryViewModel
+@using Microsoft.Extensions.Options
+@inject WebDS_Test.Services.IThemeCatalog Themes
+@inject IOptions<ReviewSettings> ReviewOptions
+@{
+    ViewData["Title"] = "Shops";
+    var settings = ReviewOptions.Value;
+}
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end mb-3">
+        <div>
+            <h1 class="h3 mb-1">Shops</h1>
+            <p class="text-muted mb-0">Every approved vendor trading on the marketplace.</p>
+        </div>
+        <form class="d-flex" method="get" asp-action="Index" role="search">
+            <input class="form-control form-control-sm me-2" type="search" name="q" value="@Model.Search" placeholder="Search shops" />
+            <button class="btn btn-brand btn-sm" type="submit">Search</button>
+        </form>
+    </div>
+
+    @if (Model.Shops.Count == 0)
+    {
+        <div class="card"><div class="card-body text-muted">No shops are trading yet.</div></div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var shop in Model.Shops)
+            {
+                var theme = Themes.Get(shop.ThemeKey);
+                var rating = Model.RatingFor(shop.Id);
+                var badge = rating.Badge(settings);
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        @* Each card previews the shop's own template by carrying its palette inline. *@
+                        <div class="shop-theme-swatch" style="display:flex;height:8px;" aria-hidden="true">
+                            @foreach (var colour in theme.Swatch)
+                            {
+                                <span style="flex:1 1 0;background:@colour;"></span>
+                            }
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <h2 class="h5 mb-1">@shop.Name</h2>
+                                <div class="d-flex flex-column align-items-end gap-1">
+                                    @if (shop.IsFeatured)
+                                    {
+                                        <span class="badge text-bg-warning">Featured</span>
+                                    }
+                                    @if (badge != SellerBadge.None)
+                                    {
+                                        <span class="badge @badge.ToCssClass()">@badge.ToDisplay()</span>
+                                    }
+                                </div>
+                            </div>
+
+                            @* Reputation sits directly under the name: the first thing a buyer checks. *@
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                @if (rating.HasRatings)
+                                {
+                                    <partial name="_Stars" model="@(new StarRating(rating.Average, rating.Count))" />
+                                    <span class="small text-muted">
+                                        @rating.Average.ToString("0.0") ·
+                                        @rating.Count review@(rating.Count == 1 ? string.Empty : "s")
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="small text-muted">No reviews yet</span>
+                                }
+                            </div>
+
+                            <p class="text-muted small mb-2">@shop.Tagline</p>
+                            <p class="small mb-3">@shop.Description</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="shop-theme-flag" title="Template theme">@theme.Name</span>
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-slug="@shop.Slug">Visit shop</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

@@ -1,0 +1,21 @@
+@*
+    Superseded by Views/Home/Error.cshtml, which is what HomeController.Error renders and which
+    uses the storefront chrome. This file is left as a minimal fallback in case another
+    controller returns View("Error") without a matching view of its own.
+*@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Error";
+}
+
+<h1 class="h3 text-danger">Something went wrong.</h1>
+<p class="text-muted">An error occurred while processing your request.</p>
+
+@if (Model.ShowRequestId)
+{
+    <p class="small text-muted">
+        Reference: <code>@Model.RequestId</code>
+    </p>
+}
+
+<a class="btn btn-primary" asp-controller="Home" asp-action="Index">Back to the storefront</a>

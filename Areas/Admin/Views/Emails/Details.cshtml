@@ -1,0 +1,101 @@
+@model EmailMessage
+@{
+    ViewData["Title"] = "Email";
+    var transport = ViewData["Transport"] as string ?? "file";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">@Model.Subject</h2>
+        <p class="text-muted small mb-0">
+            @EmailDisplay.Kind(Model.Kind) &middot; queued @Model.CreatedUtc.ToString("d MMM yyyy HH:mm")
+        </p>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" asp-action="Index">&larr; Back to outbox</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Preview</span>
+                <span class="small text-muted">Rendered in a sandboxed frame</span>
+            </div>
+            <div class="card-body p-0">
+                <iframe title="Email preview" sandbox="" style="width:100%;height:32rem;border:0;"
+                        srcdoc="@Model.BodyHtml"></iframe>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header fw-semibold">Plain-text alternative</div>
+            <div class="card-body">
+                <pre class="mb-0 small" style="white-space:pre-wrap;">@Model.BodyText</pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header fw-semibold">Delivery</div>
+            <div class="card-body">
+                <dl class="row small mb-0">
+                    <dt class="col-5 text-muted">Status</dt>
+                    <dd class="col-7">
+                        <span class="badge @EmailDisplay.StatusCss(Model.Status)">@EmailDisplay.Status(Model.Status)</span>
+                    </dd>
+
+                    <dt class="col-5 text-muted">Transport</dt>
+                    <dd class="col-7">@transport</dd>
+
+                    <dt class="col-5 text-muted">Attempts</dt>
+                    <dd class="col-7">@Model.Attempts</dd>
+
+                    <dt class="col-5 text-muted">Sent</dt>
+                    <dd class="col-7">@(Model.SentUtc?.ToString("d MMM yyyy HH:mm") ?? "—")</dd>
+
+                    @if (Model.NextAttemptUtc is not null)
+                    {
+                        <dt class="col-5 text-muted">Next attempt</dt>
+                        <dd class="col-7">@Model.NextAttemptUtc.Value.ToString("d MMM yyyy HH:mm")</dd>
+                    }
+
+                    <dt class="col-5 text-muted">Dedupe key</dt>
+                    <dd class="col-7"><code class="small">@(Model.DedupeKey ?? "—")</code></dd>
+                </dl>
+
+                @if (!string.IsNullOrWhiteSpace(Model.LastError))
+                {
+                    <div class="alert alert-danger small mt-3 mb-0">
+                        <strong>Last error</strong>
+                        <div>@Model.LastError</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header fw-semibold">Recipient</div>
+            <div class="card-body small">
+                <div class="fw-semibold">@(Model.ToName ?? "—")</div>
+                <div class="text-muted">@Model.ToAddress</div>
+
+                @if (Model.OrderId is not null)
+                {
+                    <hr />
+                    <div class="text-muted">Order</div>
+                    <a class="text-decoration-none" asp-controller="Orders" asp-action="Details"
+                       asp-route-id="@Model.OrderId">Order #@Model.OrderId</a>
+                }
+            </div>
+        </div>
+
+        @if (Model.Status != EmailStatus.Queued)
+        {
+            <form method="post" asp-action="Resend" class="mt-3">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button class="btn btn-primary w-100" type="submit">Resend this message</button>
+            </form>
+        }
+    </div>
+</div>

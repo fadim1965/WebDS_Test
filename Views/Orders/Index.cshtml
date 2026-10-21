@@ -1,0 +1,106 @@
+@model IReadOnlyList<Order>
+@using Microsoft.Extensions.Options
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    ViewData["Title"] = "Your orders";
+
+    var currency = StoreOptions.Value.CurrencySymbol;
+    var orders = Model ?? Array.Empty<Order>();
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Your orders</h1>
+        <p class="text-muted small mb-0">
+            Every order placed with this account, newest first.
+        </p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-controller="Orders" asp-action="Track">Track a guest order</a>
+</div>
+
+@if (orders.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <h2 class="h5">You have not placed an order yet</h2>
+            <p class="text-muted mb-3">
+                Once you check out, your orders and their delivery status appear here.
+            </p>
+            <div class="d-flex flex-wrap justify-content-center gap-2">
+                <a class="btn btn-primary" asp-controller="Catalog" asp-action="Index">Start shopping</a>
+                <a class="btn btn-outline-secondary" asp-controller="Orders" asp-action="Track">Track an order by number</a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    @if (orders.Count == 1)
+    {
+        <p class="text-muted small">1 order on this account.</p>
+    }
+    else
+    {
+        <p class="text-muted small">@orders.Count orders on this account.</p>
+    }
+
+    @foreach (var order in orders)
+    {
+        <div class="card card-hover mb-3">
+            <div class="card-body">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-6">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                            <h2 class="h5 mb-0">@order.OrderNumber</h2>
+                            <span class="badge @order.Status.ToCssClass()">@order.Status.ToDisplay()</span>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            Placed @order.PlacedUtc.ToString("d MMM yyyy HH:mm") UTC ·
+                            @order.TotalQuantity item@(order.TotalQuantity == 1 ? string.Empty : "s")
+                        </p>
+                    </div>
+
+                    <div class="col-md-3 text-md-end">
+                        <div class="text-muted small">Order total</div>
+                        <div class="fw-bold">@currency@order.GrandTotal.ToString("N2")</div>
+                    </div>
+
+                    <div class="col-md-3 text-md-end">
+                        <a class="btn btn-outline-primary" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">
+                            View details
+                        </a>
+                    </div>
+                </div>
+
+                @if (order.Lines.Count > 0)
+                {
+                    <hr />
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        @foreach (var line in order.Lines.Take(4))
+                        {
+                            if (!string.IsNullOrEmpty(line.ImageUrl))
+                            {
+                                <img src="@line.ImageUrl" alt="@line.ProductName" class="rounded"
+                                     style="width:44px;height:44px;object-fit:cover;" />
+                            }
+                            else
+                            {
+                                <span class="avatar-circle" aria-hidden="true">@(string.IsNullOrEmpty(line.ProductName) ? "?" : line.ProductName.Substring(0, 1).ToUpperInvariant())</span>
+                            }
+                        }
+                        <span class="text-muted small">
+                            @if (order.Lines.Count > 4)
+                            {
+                                <span>@(string.Join(", ", order.Lines.Take(3).Select(l => l.ProductName))) and @(order.Lines.Count - 3) more</span>
+                            }
+                            else
+                            {
+                                <span>@(string.Join(", ", order.Lines.Select(l => l.ProductName)))</span>
+                            }
+                        </span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}

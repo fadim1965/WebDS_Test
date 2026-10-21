@@ -1,0 +1,356 @@
+/* ==========================================================================
+   dashboard.css — marketing & analytics dashboard components.
+   ========================================================================== */
+
+/* ---------- Stat cards with trend sparkline -------------------------------- */
+
+.dashboard-stat {
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+    background: var(--brand-surface);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-stat .stat-head {
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid var(--brand-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.dashboard-stat .stat-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: var(--brand-ink-subtle);
+    line-height: 1.3;
+}
+
+.dashboard-stat .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--brand-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dashboard-stat .stat-meta {
+    margin-top: .25rem;
+    font-size: 12px;
+    color: var(--brand-ink-subtle);
+}
+
+.dashboard-stat .stat-trend {
+    display: flex;
+    align-items: baseline;
+    gap: .35rem;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: auto;
+    padding: .75rem 1.1rem;
+    border-top: 1px solid rgba(0,0,0,.04);
+}
+
+.dashboard-stat .trend-up { color: var(--brand-success); }
+.dashboard-stat .trend-down { color: var(--brand-danger); }
+.dashboard-stat .trend-neutral { color: var(--brand-ink-subtle); }
+
+/* ---------- CSS-only sparkline -------------------------------------------- */
+
+.sparkline {
+    position: relative;
+    height: 40px;
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    padding: 4px 0;
+}
+
+.sparkline-bar {
+    flex: 1 1 0;
+    background-color: var(--brand-primary);
+    border-radius: 2px 2px 0 0;
+    transition: background-color .2s ease;
+}
+
+.sparkline-bar:hover {
+    background-color: var(--brand-primary-dark);
+}
+
+.sparkline-bar.is-peak {
+    background-color: var(--brand-accent);
+}
+
+.sparkline-bar.is-zero {
+    height: 0 !important;
+    background-color: transparent;
+}
+
+.sparkline-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 6px;
+    padding: .2rem .5rem;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--brand-ink);
+    color: #fff;
+    border-radius: var(--brand-radius);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s ease;
+}
+
+.sparkline-bar:hover .sparkline-tooltip {
+    opacity: 1;
+}
+
+/* ---------- Mini bar charts (horizontal) ----------------------------------- */
+
+.mini-bar {
+    height: 280px;
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    padding: 8px 0;
+    border-top: 1px solid rgba(0,0,0,.04);
+}
+
+.mini-bar-column {
+    flex: 1 1 0;
+    background-color: var(--brand-primary);
+    border-radius: 3px 3px 0 0;
+    position: relative;
+    transition: background-color .2s ease;
+}
+
+.mini-bar-column.is-peak {
+    background-color: var(--brand-accent);
+}
+
+.mini-bar-column label {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--brand-ink-subtle);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity .15s ease;
+}
+
+.mini-bar-column:hover {
+    background-color: var(--brand-primary-dark);
+}
+
+.mini-bar-column:hover label {
+    opacity: 1;
+}
+
+.mini-bar-axis {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--brand-ink-subtle);
+    padding-top: 4px;
+}
+
+/* ---------- Data tables ---------------------------------------------------- */
+
+.marketing-table {
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+    overflow: hidden;
+}
+
+.marketing-table .table {
+    margin-bottom: 0;
+}
+
+.marketing-table thead th {
+    background-color: var(--brand-surface-raised);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    color: var(--brand-ink-muted);
+    border-bottom: 2px solid var(--brand-primary);
+}
+
+.marketing-table tr {
+    border-bottom: 1px solid rgba(0,0,0,.04);
+}
+
+.marketing-table tr:last-child {
+    border-bottom: none;
+}
+
+/* ---------- Rank badges ---------------------------------------------------- */
+
+.rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.rank-badge.gold { background: var(--brand-accent); color: #000; }
+.rank-badge.silver { background: #cbd5e1; color: #0b3c5d; }
+.rank-badge.bronze { background: #e3a857; color: #000; }
+.rank-badge.plain { background: var(--brand-surface-muted); color: var(--brand-ink-subtle); }
+
+/* ---------- Funnel steps --------------------------------------------------- */
+
+.funnel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    padding: 1rem 0;
+}
+
+.funnel-step {
+    flex: 1 1 180px;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+    background: var(--brand-surface);
+    padding: .85rem 1rem;
+    text-align: center;
+    position: relative;
+}
+
+.funnel-step .step-number {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: var(--brand-primary);
+    line-height: 1;
+}
+
+.funnel-step .step-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    color: var(--brand-ink-subtle);
+    margin-top: .25rem;
+}
+
+.funnel-step .step-meta {
+    font-size: 12px;
+    color: var(--brand-ink-muted);
+    margin-top: .4rem;
+}
+
+.funnel-arrow {
+    align-self: center;
+    color: var(--brand-ink-subtle);
+    font-size: 1.25rem;
+    flex: 0 0 auto;
+}
+
+/* ---------- KPI row -------------------------------------------------------- */
+
+.kpi-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.kpi {
+    flex: 1;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+    background: var(--brand-surface);
+    padding: 1rem 1.1rem;
+}
+
+.kpi .kpi-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--brand-ink);
+}
+
+.kpi .kpi-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    color: var(--brand-ink-subtle);
+}
+
+.kpi .kpi-delta {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: .2rem;
+}
+
+.kpi-delta.up { color: var(--brand-success); }
+.kpi-delta.down { color: var(--brand-danger); }
+.kpi-delta.neutral { color: var(--brand-ink-subtle); }
+
+/* ---------- Section headers ------------------------------------------------ */
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 1.5rem 0 .75rem;
+    color: var(--brand-ink);
+}
+
+.section-title .section-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--brand-radius);
+    background: var(--brand-primary-tint);
+    color: var(--brand-primary-dark);
+    display: grid;
+    place-items: center;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.section-desc {
+    font-size: 12.5px;
+    color: var(--brand-ink-subtle);
+    margin-bottom: 1rem;
+}
+
+/* ---------- Empty states --------------------------------------------------- */
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--brand-ink-subtle);
+}
+
+.empty-state .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: .5;
+}
+
+/* ---------- Responsive ----------------------------------------------------- */
+
+@media (max-width: 767.98px) {
+    .dashboard-stat .stat-value { font-size: 1.5rem; }
+    .funnel-step { flex: 1 1 100%; }
+}

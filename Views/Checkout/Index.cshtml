@@ -1,0 +1,246 @@
+@model CheckoutViewModel
+@{
+    ViewData["Title"] = "Checkout";
+    var cart = Model.Cart;
+    var currency = cart.Settings.CurrencySymbol;
+    var hasAddresses = Model.SavedAddresses.Count > 0;
+}
+
+<h1 class="h3 mb-3">Checkout</h1>
+
+@if (cart.Cart is null || cart.Cart.IsEmpty)
+{
+    <div class="alert alert-warning">Your cart is empty.</div>
+    <a asp-controller="Cart" asp-action="Index" class="btn btn-outline-primary">Back to cart</a>
+}
+else
+{
+    <form asp-action="Place" method="post" novalidate>
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="IdempotencyKey" />
+
+        <div class="row g-4">
+            <div class="col-lg-8">
+                @if (hasAddresses)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header"><h2 class="h6 mb-0">Saved addresses</h2></div>
+                        <div class="card-body">
+                            <label class="form-label" asp-for="SelectedAddressId">Deliver to a saved address</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <select asp-for="SelectedAddressId" class="form-select" id="savedAddress" style="max-width:32rem">
+                                    <option value="">— enter a new address —</option>
+                                    @foreach (var address in Model.SavedAddresses)
+                                    {
+                                        var summary = string.Join(", ", new[]
+                                        {
+                                            address.Line1, address.Line2, address.City,
+                                            address.State, address.PostalCode, address.Country
+                                        }.Where(p => !string.IsNullOrWhiteSpace(p)));
+                                        <option value="@address.Id"
+                                                data-name="@address.FullName"
+                                                data-line1="@address.Line1"
+                                                data-line2="@address.Line2"
+                                                data-city="@address.City"
+                                                data-state="@address.State"
+                                                data-postal="@address.PostalCode"
+                                                data-country="@address.Country"
+                                                data-phone="@address.Phone">
+                                            @address.FullName — @summary
+                                        </option>
+                                    }
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary" id="useAddress">Use this address</button>
+                            </div>
+                            <div class="form-text">Choosing an address copies it into the fields below, which you can still edit.</div>
+                        </div>
+                    </div>
+                }
+
+                <div class="card mb-3">
+                    <div class="card-header"><h2 class="h6 mb-0">Contact</h2></div>
+                    <div class="card-body row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" asp-for="Email">Email</label>
+                            <input asp-for="Email" class="form-control" autocomplete="email" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" asp-for="CustomerName">Name on order</label>
+                            <input asp-for="CustomerName" class="form-control" autocomplete="name" />
+                            <span asp-validation-for="CustomerName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" asp-for="Phone">Phone</label>
+                            <input asp-for="Phone" class="form-control" autocomplete="tel" />
+                            <span asp-validation-for="Phone" class="text-danger small"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header"><h2 class="h6 mb-0">Shipping address</h2></div>
+                    <div class="card-body row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" asp-for="ShippingName">Recipient</label>
+                            <input asp-for="ShippingName" class="form-control" autocomplete="name" />
+                            <span asp-validation-for="ShippingName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" asp-for="ShippingLine1">Address line 1</label>
+                            <input asp-for="ShippingLine1" class="form-control" autocomplete="address-line1" />
+                            <span asp-validation-for="ShippingLine1" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" asp-for="ShippingLine2">Address line 2</label>
+                            <input asp-for="ShippingLine2" class="form-control" autocomplete="address-line2" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" asp-for="ShippingCity">City</label>
+                            <input asp-for="ShippingCity" class="form-control" autocomplete="address-level2" />
+                            <span asp-validation-for="ShippingCity" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label" asp-for="ShippingState">State / region</label>
+                            <input asp-for="ShippingState" class="form-control" autocomplete="address-level1" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label" asp-for="ShippingPostalCode">Postal code</label>
+                            <input asp-for="ShippingPostalCode" class="form-control" autocomplete="postal-code" />
+                            <span asp-validation-for="ShippingPostalCode" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" asp-for="ShippingCountry">Country</label>
+                            <input asp-for="ShippingCountry" class="form-control" autocomplete="country-name" />
+                            <span asp-validation-for="ShippingCountry" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" asp-for="CustomerNote">Order note (optional)</label>
+                            <textarea asp-for="CustomerNote" class="form-control" rows="2"></textarea>
+                        </div>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input asp-for="SaveAddressToBook" class="form-check-input" />
+                                    <label asp-for="SaveAddressToBook" class="form-check-label">Save this address to my address book</label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header"><h2 class="h6 mb-0">Payment</h2></div>
+                    <div class="card-body">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" asp-for="PaymentMethod"
+                                   value="@((int)PaymentMethod.CashOnDelivery)" id="payCod" />
+                            <label class="form-check-label" for="payCod">
+                                <strong>Cash on delivery</strong>
+                                <span class="d-block form-text mt-0">Pay the courier when your order arrives.</span>
+                            </label>
+                        </div>
+                        @if (Model.CardAvailable)
+                        {
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" asp-for="PaymentMethod"
+                                       value="@((int)PaymentMethod.Card)" id="payCard" />
+                                <label class="form-check-label" for="payCard">
+                                    <strong>Pay by card</strong>
+                                    <span class="d-block form-text mt-0">You will be taken to our secure payment page to finish the order.</span>
+                                </label>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card mb-3">
+                    <div class="card-header"><h2 class="h6 mb-0">Order summary</h2></div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Subtotal</span>
+                            <span>@currency@cart.Subtotal.ToString("N2")</span>
+                        </div>
+
+                        @if (cart.Discount > 0m)
+                        {
+                            <div class="d-flex justify-content-between mb-1 text-success">
+                                <span>Discount @(string.IsNullOrWhiteSpace(cart.AppliedCouponCode) ? string.Empty : $"({cart.AppliedCouponCode})")</span>
+                                <span>−@currency@cart.Discount.ToString("N2")</span>
+                            </div>
+                        }
+
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Shipping</span>
+                            <span>@(cart.FinalShipping == 0m ? "Free" : currency + cart.FinalShipping.ToString("N2"))</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Tax</span>
+                            <span>@currency@cart.FinalTax.ToString("N2")</span>
+                        </div>
+                        <div class="d-flex justify-content-between border-top pt-2 mt-2 fw-bold fs-5">
+                            <span>Total</span>
+                            <span>@currency@cart.FinalTotal.ToString("N2")</span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 mt-3">Place order</button>
+                        <div class="form-text text-center mt-2">
+                            @(Model.CardAvailable
+                                ? "Cash orders are paid on delivery; card orders continue to our secure payment page."
+                                : "Payment is collected on delivery.")
+                        </div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(cart.AppliedCouponCode))
+                {
+                    <div class="card">
+                        <div class="card-body d-flex flex-wrap align-items-center gap-2">
+                            <span class="badge text-bg-success">@cart.AppliedCouponCode</span>
+                            <span class="small text-muted">applied</span>
+                            <form asp-controller="Coupons" asp-action="Remove" method="post" class="ms-auto">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="returnUrl" value="@Url.Action("Index", "Checkout")" />
+                                <button type="submit" class="btn btn-sm btn-link text-decoration-none">Remove</button>
+                            </form>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </form>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var select = document.getElementById('savedAddress');
+            var button = document.getElementById('useAddress');
+            if (!select || !button) return;
+
+            function fill(source, targetId, value) {
+                if (!value) return;
+                var field = document.getElementById(targetId);
+                if (field) field.value = value;
+            }
+
+            button.addEventListener('click', function () {
+                var option = select.options[select.selectedIndex];
+                if (!option || !option.dataset.line1) return;
+
+                fill(option, 'ShippingName', option.dataset.name);
+                fill(option, 'ShippingLine1', option.dataset.line1);
+                fill(option, 'ShippingLine2', option.dataset.line2);
+                fill(option, 'ShippingCity', option.dataset.city);
+                fill(option, 'ShippingState', option.dataset.state);
+                fill(option, 'ShippingPostalCode', option.dataset.postal);
+                fill(option, 'ShippingCountry', option.dataset.country);
+                fill(option, 'Phone', option.dataset.phone);
+            });
+        })();
+    </script>
+}

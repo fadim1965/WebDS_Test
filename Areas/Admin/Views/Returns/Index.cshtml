@@ -1,0 +1,95 @@
+@model IReadOnlyList<WebDS_Test.Domain.ReturnRequest>
+@inject Microsoft.Extensions.Options.IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    var status = ViewData["Status"] as ReturnStatus?;
+    var search = ViewData["Search"] as string;
+    var openCount = (int)(ViewData["OpenCount"] ?? 0);
+    var requestedCount = (int)(ViewData["RequestedCount"] ?? 0);
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Returns</h1>
+            <p class="text-muted mb-0">
+                Every return request on the marketplace. Shops approve and receive; this area issues the refunds.
+                <strong>@requestedCount</strong> awaiting decision, <strong>@openCount</strong> open in total.
+            </p>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-format="csv">Export CSV</a>
+    </div>
+
+    <form method="get" class="row g-2 align-items-center mt-2 mb-3">
+        <div class="col-auto">
+            <label class="form-label small mb-0" for="status">Status</label>
+            <select id="status" name="status" class="form-select form-select-sm">
+                <option value="">All</option>
+                @foreach (var s in Enum.GetValues<ReturnStatus>())
+                {
+                    <option value="@s" selected="@(status == s)">@s.ToDisplay()</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0" for="q">Search</label>
+            <input id="q" name="q" class="form-control form-control-sm" placeholder="RMA-…, email or order number"
+                   value="@search" />
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary btn-sm">Filter</button>
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Index">Clear</a>
+        </div>
+    </form>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Reference</th>
+                        <th>Order</th>
+                        <th>Shop</th>
+                        <th>Requested</th>
+                        <th>Shopper</th>
+                        <th class="text-center">Units</th>
+                        <th class="text-end">Refunded</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Count == 0)
+                    {
+                        <tr><td colspan="9" class="text-center text-muted py-4">No returns match this view.</td></tr>
+                    }
+                    @foreach (var request in Model)
+                    {
+                        <tr>
+                            <td><strong>@request.Reference</strong></td>
+                            <td>
+                                <span class="small">@(request.Order?.OrderNumber ?? $"#{request.OrderId}")</span>
+                                @if (!string.IsNullOrWhiteSpace(request.CustomerNote))
+                                {
+                                    <div class="small text-muted text-truncate" style="max-width:16rem;" title="@request.CustomerNote">@request.CustomerNote</div>
+                                }
+                            </td>
+                            <td class="small">@(request.Shop?.Name ?? "(shop removed)")</td>
+                            <td class="small text-nowrap">@request.RequestedUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                            <td class="small">@request.Email</td>
+                            <td class="text-center">@request.Lines.Sum(l => l.Quantity)</td>
+                            <td class="text-end text-nowrap">
+                                @(request.Status == ReturnStatus.Refunded
+                                    ? $"{StoreOptions.Value.CurrencySymbol}{request.RefundAmount:N2}"
+                                    : "—")
+                            </td>
+                            <td><span class="badge @request.Status.ToCssClass()">@request.Status.ToDisplay()</span></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@request.Id">Open</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

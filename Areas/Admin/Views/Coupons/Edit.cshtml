@@ -1,0 +1,32 @@
+@model WebDS_Test.Domain.Coupon
+@{
+    ViewData["Title"] = $"Edit {Model.Code}";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Edit @Model.Code</h2>
+        <p class="text-muted small mb-0">
+            Redeemed @Model.UsedCount time@(Model.UsedCount == 1 ? string.Empty : "s").
+            Changing the rules affects only future baskets.
+        </p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Coupons" asp-action="Index">Back to coupons</a>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-8 col-xxl-6">
+        <form method="post" asp-area="Admin" asp-controller="Coupons" asp-action="Edit" asp-route-id="@Model.Id">
+            <partial name="_Form" model="Model" />
+
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                <button type="submit" class="btn btn-primary">Save coupon</button>
+                <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Coupons" asp-action="Index">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

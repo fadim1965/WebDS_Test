@@ -1,0 +1,156 @@
+@model WebDS_Test.Areas.Vendor.Models.VendorPayoutViewModel
+@inject IOptions<StoreSettings> StoreOptions
+@{
+    ViewData["Title"] = "Payouts";
+    var currency = StoreOptions.Value.CurrencySymbol;
+    string Money(decimal value) => currency + value.ToString("N2");
+    var outstanding = Model.Outstanding;
+}
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Payouts</h1>
+            <p class="text-muted mb-0">What @Model.Shop.Name is owed, and what has been settled.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Products" asp-action="Index">Products</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-3">
+        <div class="col-md-3"><div class="card border-success"><div class="card-body">
+            <div class="text-muted small">Outstanding</div>
+            <div class="h4 mb-0">@Money(outstanding?.Net ?? 0m)</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body">
+            <div class="text-muted small">Unsettled entries</div>
+            <div class="h4 mb-0">@(outstanding?.EntryCount ?? 0)</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body">
+            <div class="text-muted small">Gross (unsettled)</div>
+            <div class="h4 mb-0">@Money(outstanding?.Gross ?? 0m)</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body">
+            <div class="text-muted small">Commission (unsettled)</div>
+            <div class="h4 mb-0">@Money(outstanding?.Commission ?? 0m)</div>
+        </div></div></div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header bg-white fw-semibold">Payout destination</div>
+        <div class="card-body">
+            <p class="text-muted small">
+                Where the marketplace sends your settlements. Recorded with every payout's statement,
+                so the trail shows both the destination and the amounts.
+            </p>
+            <form asp-action="SaveBank" method="post" class="row g-2 align-items-end">
+                @Html.AntiForgeryToken()
+                <div class="col-md-4">
+                    <label class="form-label small mb-1" for="bankAccountName">Account name</label>
+                    <input id="bankAccountName" name="bankAccountName" class="form-control form-control-sm"
+                           value="@Model.Shop.BankAccountName" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1" for="bankName">Bank name</label>
+                    <input id="bankName" name="bankName" class="form-control form-control-sm"
+                           value="@Model.Shop.BankName" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1" for="bankIban">IBAN</label>
+                    <input id="bankIban" name="bankIban" class="form-control form-control-sm"
+                           value="@Model.Shop.BankIban" />
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-sm btn-outline-primary w-100">Save payout details</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">Settlements</div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Reference</th><th>Paid</th><th>Period</th><th>Status</th>
+                        <th class="text-end">Gross</th><th class="text-end">Commission</th>
+                        <th class="text-end">Net</th><th>Method</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Payouts.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-muted">You have not been paid out yet.</td></tr>
+                }
+                @foreach (var payout in Model.Payouts)
+                {
+                    <tr>
+                        <td><a asp-action="Details" asp-route-id="@payout.Id">@payout.Reference</a></td>
+                        <td>@payout.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="text-muted small">@payout.PeriodStartUtc.ToString("yyyy-MM-dd") – @payout.PeriodEndUtc.ToString("yyyy-MM-dd")</td>
+                        <td><span class="badge @payout.Status.ToCssClass()">@payout.Status.ToDisplay()</span>
+                            @if (payout.Status == PayoutStatus.Failed)
+                            {
+                                <div class="small text-muted">@payout.FailureReason</div>
+                            }
+                        </td>
+                        <td class="text-end">@Money(payout.GrossAmount)</td>
+                        <td class="text-end">@Money(payout.CommissionAmount)</td>
+                        <td class="text-end fw-semibold">@Money(payout.NetAmount)</td>
+                        <td>@payout.Method</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">Recent ledger activity</div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Recorded</th><th>Type</th><th>Order</th>
+                        <th class="text-end">Gross</th><th class="text-end">Commission</th>
+                        <th class="text-end">Net</th><th>Settled</th><th>Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Ledger.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-muted">No earnings yet.</td></tr>
+                }
+                @foreach (var entry in Model.Ledger)
+                {
+                    <tr>
+                        <td>@entry.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>
+                            <span class="badge @(entry.Type == VendorLedgerEntryType.Sale ? "text-bg-success" : entry.Type == VendorLedgerEntryType.Reversal ? "text-bg-danger" : "text-bg-secondary")">
+                                @entry.Type
+                            </span>
+                        </td>
+                        <td>@(entry.OrderId?.ToString() ?? "—")</td>
+                        <td class="text-end">@Money(entry.GrossAmount)</td>
+                        <td class="text-end">@Money(entry.CommissionAmount)</td>
+                        <td class="text-end">@Money(entry.NetAmount)</td>
+                        <td>
+                            @if (entry.SettledUtc is { } settled)
+                            {
+                                <span class="text-muted small">@entry.PayoutReference · @settled.ToString("yyyy-MM-dd")</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Unsettled</span>
+                            }
+                        </td>
+                        <td class="text-muted small">@entry.Note</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

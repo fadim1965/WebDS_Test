@@ -1,0 +1,626 @@
+@model ProductDetailViewModel
+@using System.Globalization
+@using Microsoft.Extensions.Options
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@functions {
+    /* Two-letter monogram for the reviewer's avatar disc. */
+    private static string Initials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "?";
+        }
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(parts.Take(2).Select(part => char.ToUpperInvariant(part[0])));
+    }
+}
+@{
+    ViewData["Title"] = Model.Product.Name;
+
+    var currency = StoreOptions.Value.CurrencySymbol;
+    var product = Model.Product;
+    var variants = Model.Variants;
+    var defaultVariant = variants.FirstOrDefault(v => v.StockQuantity > 0) ?? variants.FirstOrDefault();
+    var primaryImage = Model.Images.FirstOrDefault();
+
+    var defaultPrice = defaultVariant?.Price ?? Model.MinPrice;
+    var defaultCompareAt = defaultVariant?.EffectiveCompareAtPrice ?? 0m;
+    var defaultStock = defaultVariant?.StockQuantity ?? 0;
+    var defaultLowStock = defaultVariant?.LowStockThreshold ?? 0;
+    var canBuy = defaultVariant is not null && defaultStock > 0;
+}
+
+<nav aria-label="Breadcrumb">
+    <ol class="breadcrumb mb-3">
+        <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Catalog" asp-action="Index">All products</a></li>
+        @foreach (var crumb in Model.Breadcrumb)
+        {
+            <li class="breadcrumb-item">
+                <a asp-controller="Catalog" asp-action="Index" asp-route-category="@crumb.Slug">@crumb.Name</a>
+            </li>
+        }
+        <li class="breadcrumb-item active" aria-current="page">@product.Name</li>
+    </ol>
+</nav>
+
+<div class="row g-4" id="productDetail" data-currency="@currency">
+    <div class="col-lg-6">
+        <div class="product-thumb is-large mb-2" id="galleryMain">
+            @if (primaryImage is not null && !string.IsNullOrEmpty(primaryImage.Url))
+            {
+                <img id="galleryImage" src="@primaryImage.Url" alt="@(primaryImage.AltText ?? product.Name)" />
+            }
+            else
+            {
+                <div class="d-flex align-items-center justify-content-center h-100 text-muted">No image available</div>
+            }
+
+            <div class="thumb-badges">
+                @if (product.IsFeatured)
+                {
+                    <span class="badge text-bg-warning">Featured</span>
+                }
+                @if (!Model.InStock)
+                {
+                    <span class="badge text-bg-secondary">Out of stock</span>
+                }
+            </div>
+        </div>
+
+        @if (Model.Images.Count > 1)
+        {
+            <div class="d-flex flex-wrap gap-2" role="group" aria-label="Product images">
+                @foreach (var image in Model.Images)
+                {
+                    var isPrimary = image.IsPrimary;
+                    <button type="button"
+                            class="gallery-thumb btn p-0 border rounded @(isPrimary ? "border-primary" : string.Empty)"
+                            data-image-src="@image.Url"
+                            data-image-alt="@(image.AltText ?? product.Name)"
+                            aria-label="Show image: @(image.AltText ?? product.Name)">
+                        <img src="@image.Url" alt="" aria-hidden="true"
+                             style="width:72px;height:72px;object-fit:cover;border-radius:8px" />
+                    </button>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-6">
+        @if (!string.IsNullOrWhiteSpace(product.Brand))
+        {
+            <div class="text-uppercase text-muted small fw-semibold mb-1">@product.Brand</div>
+        }
+
+        <h1 class="h3 mb-2">@product.Name</h1>
+
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            @if (Model.ReviewSummary.HasRatings)
+            {
+                <partial name="_Stars" model="@(new WebDS_Test.Services.StarRating(Model.ReviewSummary.Average, Model.ReviewSummary.Count))" />
+                <span class="fw-semibold">@Model.ReviewSummary.Average.ToString("0.0")</span>
+                <a class="small text-muted text-decoration-none" href="#reviews">
+                    @Model.ReviewSummary.Count review@(Model.ReviewSummary.Count == 1 ? string.Empty : "s")
+                </a>
+            }
+            else
+            {
+                <a class="small text-muted text-decoration-none" href="#reviews">Be the first to review</a>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(product.ShortDescription))
+        {
+            <p class="text-muted">@product.ShortDescription</p>
+        }
+
+        <div class="d-flex align-items-baseline flex-wrap gap-2 mb-2" aria-live="polite">
+            <span class="price-now fs-3" id="priceNow">@currency@defaultPrice.ToString("N2")</span>
+            <span class="price-was @(defaultCompareAt > 0m ? string.Empty : "d-none")" id="priceWas">
+                @currency@defaultCompareAt.ToString("N2")
+            </span>
+            <span id="stockBadge" class="badge @(defaultStock < 1 ? "text-bg-secondary" : defaultStock <= defaultLowStock ? "text-bg-warning" : "text-bg-success")">
+                @if (defaultStock < 1)
+                {
+                    <span>Out of stock</span>
+                }
+                else if (defaultStock <= defaultLowStock)
+                {
+                    <span>Only @defaultStock left</span>
+                }
+                else
+                {
+                    <span>In stock</span>
+                }
+            </span>
+        </div>
+
+        @if (product.HasPriceRange)
+        {
+            <p class="text-muted small mb-3">
+                Prices from @currency@Model.MinPrice.ToString("N2") depending on the option you choose.
+            </p>
+        }
+
+        @if (variants.Count == 0)
+        {
+            <div class="alert alert-warning">
+                This product has no purchasable options at the moment. Please check back soon.
+            </div>
+        }
+        else
+        {
+            <form method="post" asp-controller="Cart" asp-action="Add" class="mb-3">
+                <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+
+                <fieldset class="mb-3">
+                    <legend class="form-label h6 mb-2">Choose an option</legend>
+                    @foreach (var variant in variants)
+                    {
+                        var isAvailable = variant.StockQuantity > 0;
+                        var variantLabel = string.IsNullOrWhiteSpace(variant.Name) ? "Standard" : variant.Name;
+                        var compareAt = variant.EffectiveCompareAtPrice;
+
+                        <div class="form-check mb-2">
+                            <input class="form-check-input variant-choice" type="radio" name="variantId"
+                                   id="variant-@variant.Id" value="@variant.Id"
+                                   checked="@(variant.Id == defaultVariant?.Id)"
+                                   disabled="@(!isAvailable)"
+                                   data-price="@variant.Price.ToString("0.00", CultureInfo.InvariantCulture)"
+                                   data-compare="@compareAt.ToString("0.00", CultureInfo.InvariantCulture)"
+                                   data-stock="@variant.StockQuantity"
+                                   data-low="@variant.LowStockThreshold"
+                                   data-sku="@variant.Sku"
+                                   data-label="@variantLabel" />
+                            <label class="form-check-label" for="variant-@variant.Id">
+                                <span class="fw-semibold">@variantLabel</span>
+                                <span class="text-muted">· @currency@variant.Price.ToString("N2")</span>
+                                @if (!isAvailable)
+                                {
+                                    <span class="badge text-bg-secondary ms-1">Out of stock</span>
+                                }
+                                else if (variant.IsLowStock)
+                                {
+                                    <span class="badge text-bg-warning ms-1">Only @variant.StockQuantity left</span>
+                                }
+                            </label>
+                        </div>
+                    }
+                </fieldset>
+
+                <div class="d-flex flex-wrap align-items-end gap-3">
+                    <div>
+                        <label class="form-label" for="quantity">Quantity</label>
+                        <input class="form-control" id="quantity" name="quantity" type="number"
+                               value="1" min="1" max="99" step="1" style="width: 6.5rem;" />
+                    </div>
+                    <button class="btn btn-primary btn-lg" type="submit" disabled="@(!canBuy)">
+                        Add to cart
+                    </button>
+                </div>
+
+                @if (!canBuy)
+                {
+                    <p class="form-text text-danger mb-0">This product is currently out of stock.</p>
+                }
+            </form>
+        }
+
+        <form method="post" asp-controller="Products" asp-action="ToggleWishlist" class="mb-3">
+            <input type="hidden" name="productId" value="@product.Id" />
+            <input type="hidden" name="returnSlug" value="@product.Slug" />
+            <button class="btn btn-outline-secondary" type="submit">
+                @(Model.IsInWishlist ? "Remove from wishlist" : "Save to wishlist")
+            </button>
+        </form>
+
+        <dl class="row small mb-4">
+            <dt class="col-sm-4 text-muted fw-normal">SKU</dt>
+            <dd class="col-sm-8 mb-1" id="skuValue">@(defaultVariant?.Sku ?? "—")</dd>
+
+            <dt class="col-sm-4 text-muted fw-normal">Availability</dt>
+            <dd class="col-sm-8 mb-1">Ships in 1–2 business days</dd>
+
+            @if (product.Category is not null)
+            {
+                <dt class="col-sm-4 text-muted fw-normal">Category</dt>
+                <dd class="col-sm-8 mb-1">
+                    <a asp-controller="Catalog" asp-action="Index" asp-route-category="@product.Category.Slug">@product.Category.Name</a>
+                </dd>
+            }
+
+            <dt class="col-sm-4 text-muted fw-normal">Returns</dt>
+            <dd class="col-sm-8 mb-0">30 days, unused and in original packaging</dd>
+        </dl>
+
+        @if (!string.IsNullOrWhiteSpace(product.Description))
+        {
+            <h2 class="h5">Description</h2>
+            <p class="mb-0" style="white-space: pre-line">@product.Description</p>
+        }
+    </div>
+</div>
+
+<section class="mt-5" id="reviews">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+        <h2 class="h4 mb-0">Customer reviews</h2>
+        @if (Model.ReviewSummary.HasRatings)
+        {
+            <span class="text-muted small">
+                @Model.ReviewSummary.Count rating@(Model.ReviewSummary.Count == 1 ? string.Empty : "s") ·
+                @Model.ReviewSummary.PositivePercentage% rated 4 stars or higher
+            </span>
+        }
+    </div>
+
+    <div class="row g-4">
+        @* ----------------------------------------------------------- summary ---- *@
+        <div class="col-lg-4">
+            @if (Model.ReviewSummary.HasRatings)
+            {
+                <div class="card review-summary">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="review-average">
+                                <span class="review-average-value">@Model.ReviewSummary.Average.ToString("0.0")</span>
+                                <span class="review-average-max">out of 5</span>
+                            </div>
+                            <div>
+                                <partial name="_Stars" model="@(new WebDS_Test.Services.StarRating(Model.ReviewSummary.Average, Model.ReviewSummary.Count))" />
+                                <div class="small text-muted">@Model.ReviewSummary.Count review@(Model.ReviewSummary.Count == 1 ? string.Empty : "s")</div>
+                            </div>
+                        </div>
+
+                        @for (var star = 5; star >= 1; star--)
+                        {
+                            var isActive = Model.ReviewQuery.Stars == star;
+                            <a class="review-bar @(isActive ? "is-active" : string.Empty)"
+                               asp-action="Details" asp-route-slug="@product.Slug"
+                               asp-route-stars="@star" asp-route-reviewSort="@Model.ReviewQuery.Sort"
+                               asp-fragment="reviews"
+                               aria-label="Show @star star reviews">
+                                <span class="review-bar-label">@star <span aria-hidden="true">★</span></span>
+                                <span class="review-bar-track">
+                                    <span class="review-bar-fill" style="width:@Model.ReviewSummary.PercentageForStar(star)%"></span>
+                                </span>
+                                <span class="review-bar-count">@Model.ReviewSummary.ForStar(star)</span>
+                            </a>
+                        }
+
+                        <p class="small text-muted mb-0 mt-2">
+                            @Model.ReviewSummary.VerifiedCount verified purchase@(Model.ReviewSummary.VerifiedCount == 1 ? string.Empty : "s")
+                        </p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="card-body text-muted">
+                        No reviews yet. Be the first to share what you think.
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* ------------------------------------------------- list + form ---- *@
+        <div class="col-lg-8">
+            @* Write / edit a review, or explain why the shopper cannot. *@
+            @if (!Model.IsSignedIn)
+            {
+                <div class="alert alert-light border small mb-3">
+                    <a asp-controller="Account" asp-action="Login">Sign in</a> to write a review.
+                </div>
+            }
+            else if (Model.CanReview || Model.MyReview is not null)
+            {
+                <form method="post" asp-controller="Reviews" asp-action="Create" class="card card-body mb-4" id="writeReview">
+                    <h3 class="h6 mb-3">@(Model.MyReview is not null ? "Edit your review" : "Write a review")</h3>
+
+                    <input type="hidden" name="ProductId" value="@product.Id" />
+                    <input type="hidden" name="ReturnSlug" value="@product.Slug" />
+
+                    <fieldset class="mb-3">
+                        <legend class="form-label float-none">Your rating</legend>
+                        <div class="d-flex gap-1 rating-input">
+                            @for (var star = 1; star <= 5; star++)
+                            {
+                                <input class="btn-check" type="radio" name="Rating" id="ratingInput-@star"
+                                       value="@star" autocomplete="off"
+                                       checked="@((Model.MyReview?.Rating ?? 5) == star)" />
+                                <label class="btn btn-outline-warning btn-sm" for="ratingInput-@star"
+                                       title="@star star@(star == 1 ? string.Empty : "s")">@star ★</label>
+                            }
+                        </div>
+                    </fieldset>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="reviewTitle">Title <span class="text-muted fw-normal">(optional)</span></label>
+                        <input class="form-control" id="reviewTitle" name="Title" maxlength="140"
+                               value="@Model.MyReview?.Title" placeholder="Sum up your experience in a few words" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="reviewBody">Your review</label>
+                        <textarea class="form-control" id="reviewBody" name="Body" rows="4" maxlength="4000"
+                                  placeholder="What did you like or dislike? How did you use it?">@Model.MyReview?.Body</textarea>
+                    </div>
+
+                    <button class="btn btn-primary align-self-start" type="submit">
+                        @(Model.MyReview is not null ? "Update review" : "Submit review")
+                    </button>
+                </form>
+            }
+            else
+            {
+                <div class="alert alert-light border small mb-3">
+                    Only customers who have bought this item can review it. Once your order is confirmed you will be
+                    able to leave a review here.
+                </div>
+            }
+
+            @* Sort and filter controls. Links rather than a form so the #reviews anchor survives. *@
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                @foreach (var sortValue in Enum.GetValues<ReviewSort>())
+                {
+                    <a class="btn btn-sm @(Model.ReviewQuery.Sort == sortValue ? "btn-primary" : "btn-outline-secondary")"
+                       asp-action="Details" asp-route-slug="@product.Slug"
+                       asp-route-stars="@Model.ReviewQuery.Stars"
+                       asp-route-reviewSort="@sortValue"
+                       asp-fragment="reviews">@sortValue.ToDisplay()</a>
+                }
+                @if (Model.ReviewQuery.Stars is not null)
+                {
+                    <a class="btn btn-sm btn-outline-danger"
+                       asp-action="Details" asp-route-slug="@product.Slug" asp-fragment="reviews">
+                        Clear @Model.ReviewQuery.Stars★ filter
+                    </a>
+                }
+            </div>
+
+            @if (Model.Reviews.Items.Count == 0)
+            {
+                <div class="card">
+                    <div class="card-body text-muted">
+                        @if (Model.ReviewSummary.HasRatings)
+                        {
+                            <span>No reviews match this filter. <a asp-action="Details" asp-route-slug="@product.Slug" asp-fragment="reviews">Show all reviews</a>.</span>
+                        }
+                        else
+                        {
+                            <span>There are no reviews for this product yet.</span>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                foreach (var review in Model.Reviews.Items)
+                {
+                    <article class="card review mb-3" id="review-@review.Id">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="review-avatar" aria-hidden="true">@Initials(review.ReviewerName)</span>
+                                    <div>
+                                        <div class="fw-semibold">@review.ReviewerName</div>
+                                        <div class="small text-muted d-flex flex-wrap align-items-center gap-2">
+                                            <partial name="_Stars" model="@(new WebDS_Test.Services.StarRating(review.Rating, 1))" />
+                                            <span>@review.CreatedUtc.ToString("d MMM yyyy")</span>
+                                            @if (review.IsVerifiedPurchase)
+                                            {
+                                                <span class="badge text-bg-success">Verified purchase</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @if (Model.IsSignedIn && (Model.MyReview?.Id == review.Id || User.IsInRole(AccountService.AdminRole)))
+                                {
+                                    <form method="post" asp-controller="Reviews" asp-action="Delete">
+                                        <input type="hidden" name="reviewId" value="@review.Id" />
+                                        <input type="hidden" name="returnSlug" value="@product.Slug" />
+                                        <button class="btn btn-link btn-sm text-danger p-0" type="submit">Delete</button>
+                                    </form>
+                                }
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(review.Title))
+                            {
+                                <h3 class="h6 mt-3 mb-1">@review.Title</h3>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(review.Body))
+                            {
+                                <p class="mb-2 review-body">@review.Body</p>
+                            }
+
+                            @if (review.HasVendorReply)
+                            {
+                                <div class="review-reply">
+                                    <div class="fw-semibold small mb-1">Response from the seller</div>
+                                    <p class="small mb-0">@review.VendorReply</p>
+                                </div>
+                            }
+
+                            @{
+                                bool? voted = Model.MyVotes.TryGetValue(review.Id, out var myVote) ? myVote : null;
+                            }
+                            <div class="d-flex align-items-center gap-2 mt-3">
+                                @if (Model.IsSignedIn && Model.MyReview?.Id != review.Id)
+                                {
+                                    <form method="post" asp-controller="Reviews" asp-action="Vote" class="d-inline-flex gap-2">
+                                        <input type="hidden" name="reviewId" value="@review.Id" />
+                                        <input type="hidden" name="returnSlug" value="@product.Slug" />
+                                        <input type="hidden" name="stars" value="@Model.ReviewQuery.Stars" />
+                                        <input type="hidden" name="reviewSort" value="@Model.ReviewQuery.Sort" />
+                                        <input type="hidden" name="reviewPage" value="@Model.Reviews.Page" />
+                                        <button type="submit" name="helpful" value="true"
+                                                class="btn btn-sm btn-outline-secondary @(voted == true ? "active" : string.Empty)"
+                                                title="Mark this review as helpful">Helpful (@review.HelpfulCount)</button>
+                                        <button type="submit" name="helpful" value="false"
+                                                class="btn btn-sm btn-outline-secondary @(voted == false ? "active" : string.Empty)"
+                                                title="Mark this review as not helpful">Not helpful (@review.NotHelpfulCount)</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="small text-muted">
+                                        @review.HelpfulCount found this helpful ·
+                                        @review.NotHelpfulCount did not
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </article>
+                }
+
+                @if (Model.Reviews.TotalPages > 1)
+                {
+                    <nav aria-label="Review pages" class="mt-3">
+                        <ul class="pagination justify-content-center flex-wrap mb-0">
+                            <li class="page-item @(Model.Reviews.HasPrevious ? string.Empty : "disabled")">
+                                @if (Model.Reviews.HasPrevious)
+                                {
+                                    <a class="page-link" asp-action="Details" asp-route-slug="@product.Slug"
+                                       asp-route-stars="@Model.ReviewQuery.Stars"
+                                       asp-route-reviewSort="@Model.ReviewQuery.Sort"
+                                       asp-route-reviewPage="@(Model.Reviews.Page - 1)"
+                                       asp-fragment="reviews">Previous</a>
+                                }
+                                else
+                                {
+                                    <span class="page-link">Previous</span>
+                                }
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">Page @Model.Reviews.Page of @Model.Reviews.TotalPages</span>
+                            </li>
+                            <li class="page-item @(Model.Reviews.HasNext ? string.Empty : "disabled")">
+                                @if (Model.Reviews.HasNext)
+                                {
+                                    <a class="page-link" asp-action="Details" asp-route-slug="@product.Slug"
+                                       asp-route-stars="@Model.ReviewQuery.Stars"
+                                       asp-route-reviewSort="@Model.ReviewQuery.Sort"
+                                       asp-route-reviewPage="@(Model.Reviews.Page + 1)"
+                                       asp-fragment="reviews">Next</a>
+                                }
+                                else
+                                {
+                                    <span class="page-link">Next</span>
+                                }
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            }
+        </div>
+    </div>
+</section>
+
+@if (Model.Related.Count > 0)
+{
+    <section class="mt-5">
+        <h2 class="h4 mb-3">Related products</h2>
+        <div class="row row-cols-2 row-cols-md-4 g-3">
+            @foreach (var card in Model.Related)
+            {
+                <div class="col">
+                    <partial name="_ProductCard" model="card" />
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            var root = document.getElementById('productDetail');
+            if (!root) {
+                return;
+            }
+
+            var currency = root.getAttribute('data-currency') || '';
+
+            function money(value) {
+                return currency + Number(value).toFixed(2);
+            }
+
+            // ---- gallery: swap the main image when a thumbnail is clicked ----
+            var mainImage = document.getElementById('galleryImage');
+            var thumbs = Array.prototype.slice.call(document.querySelectorAll('.gallery-thumb'));
+
+            thumbs.forEach(function (thumb) {
+                thumb.addEventListener('click', function () {
+                    var src = thumb.getAttribute('data-image-src');
+                    if (mainImage && src) {
+                        mainImage.setAttribute('src', src);
+                        mainImage.setAttribute('alt', thumb.getAttribute('data-image-alt') || '');
+                    }
+
+                    thumbs.forEach(function (other) {
+                        other.classList.remove('border-primary');
+                    });
+                    thumb.classList.add('border-primary');
+                });
+            });
+
+            // ---- variant selection: keep price, stock and SKU in step ----
+            var priceNow = document.getElementById('priceNow');
+            var priceWas = document.getElementById('priceWas');
+            var stockBadge = document.getElementById('stockBadge');
+            var skuValue = document.getElementById('skuValue');
+
+            function refresh(choice) {
+                if (!choice) {
+                    return;
+                }
+
+                if (priceNow) {
+                    priceNow.textContent = money(choice.getAttribute('data-price'));
+                }
+
+                var compare = parseFloat(choice.getAttribute('data-compare') || '0');
+                if (priceWas) {
+                    if (compare > 0) {
+                        priceWas.textContent = money(compare);
+                        priceWas.classList.remove('d-none');
+                    } else {
+                        priceWas.classList.add('d-none');
+                    }
+                }
+
+                var stock = parseInt(choice.getAttribute('data-stock') || '0', 10);
+                var low = parseInt(choice.getAttribute('data-low') || '0', 10);
+                if (stockBadge) {
+                    stockBadge.classList.remove('text-bg-success', 'text-bg-warning', 'text-bg-secondary');
+                    if (stock < 1) {
+                        stockBadge.textContent = 'Out of stock';
+                        stockBadge.classList.add('text-bg-secondary');
+                    } else if (low >= stock) {
+                        stockBadge.textContent = 'Only ' + stock + ' left';
+                        stockBadge.classList.add('text-bg-warning');
+                    } else {
+                        stockBadge.textContent = 'In stock';
+                        stockBadge.classList.add('text-bg-success');
+                    }
+                }
+
+                if (skuValue) {
+                    skuValue.textContent = choice.getAttribute('data-sku') || '';
+                }
+            }
+
+            Array.prototype.slice.call(document.querySelectorAll('.variant-choice')).forEach(function (choice) {
+                choice.addEventListener('change', function () {
+                    if (choice.checked) {
+                        refresh(choice);
+                    }
+                });
+            });
+        })();
+    </script>
+}

@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>WebDS_Test</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Cached locally: the machine has no route to nuget.org, so versions are pinned to
+         what exists in ~/.nuget/packages. See docs/ECOMMERCE_PLAN.md. -->
+    <!-- SQLite is the development store and the source of the one-time import into SQL Server. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
+    <!-- SQL Server is the deployed provider (database "MVStores"). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
+    <!-- Admin exports to .xlsx. Everything in its dependency closure is cached locally too
+         (ClosedXML.Parser, DocumentFormat.OpenXml, ExcelNumberFormat, RBush.Signed, SixLabors.Fonts). -->
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+  </ItemGroup>
+
+  <!-- Translation catalogues live in App_Data so a language can be edited without a rebuild. They are
+       copied next to the binary because Translator reads them from the content root. -->
+  <ItemGroup>
+    <Content Include="App_Data\i18n\**\*.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- The test project lives in Tests/. The Web SDK globs **/*.cs (and content) from the project
+       directory, so without these removals it would try to compile the test sources into the web
+       app — including anything under Tests/obj, which is not covered by the default bin/obj
+       excludes because those are root-relative only. -->
+  <ItemGroup>
+    <Compile Remove="Tests/**" />
+    <Content Remove="Tests/**" />
+    <EmbeddedResource Remove="Tests/**" />
+    <None Remove="Tests/**" />
+  </ItemGroup>
+
+</Project>

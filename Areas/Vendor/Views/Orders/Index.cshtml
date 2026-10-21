@@ -1,0 +1,85 @@
+@model IReadOnlyList<WebDS_Test.Domain.Order>
+@using WebDS_Test.Domain
+@{
+    ViewData["Title"] = "Orders";
+    var shopName = ViewData["ShopName"] as string ?? "your shop";
+    var current = ViewData["Status"] as OrderStatus?;
+    var query = ViewData["Query"] as string;
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Orders</h1>
+            <p class="text-muted mb-0">Orders placed against @shopName.</p>
+        </div>
+        <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Dashboard" asp-action="Index">Back to dashboard</a>
+    </div>
+
+    <form method="get" class="row g-2 align-items-end mt-3 mb-3">
+        <div class="col-12 col-md-4">
+            <label class="form-label" for="status">Status</label>
+            <select class="form-select" id="status" name="status">
+                <option value="">All statuses</option>
+                @foreach (var s in Enum.GetValues<OrderStatus>())
+                {
+                    <option value="@s" selected="@(current == s)">@s.ToDisplay()</option>
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-5">
+            <label class="form-label" for="q">Search</label>
+            <input class="form-control" id="q" name="q" value="@query" placeholder="Order number, customer or email" />
+        </div>
+        <div class="col-12 col-md-3 d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Filter</button>
+            <a class="btn btn-outline-secondary" asp-area="Vendor" asp-controller="Orders" asp-action="Index">Clear</a>
+        </div>
+    </form>
+
+    <div class="card">
+        @if (Model.Count == 0)
+        {
+            <div class="card-body text-muted small">No orders match.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Order</th>
+                            <th scope="col">Placed</th>
+                            <th scope="col">Customer</th>
+                            <th scope="col" class="text-end">Items</th>
+                            <th scope="col" class="text-end">Subtotal</th>
+                            <th scope="col" class="text-end">Total</th>
+                            <th scope="col">Payment</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in Model)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-area="Vendor" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">@order.OrderNumber</a>
+                                </td>
+                                <td class="small text-muted">@order.PlacedUtc.ToString("d MMM yyyy HH:mm")</td>
+                                <td>
+                                    @(string.IsNullOrWhiteSpace(order.CustomerName) ? "—" : order.CustomerName)
+                                    <div class="small text-muted">@order.Email</div>
+                                </td>
+                                <td class="text-end">@order.TotalQuantity</td>
+                                <td class="text-end">@order.Subtotal.ToString("N2")</td>
+                                <td class="text-end fw-semibold">@order.GrandTotal.ToString("N2")</td>
+                                <td class="small">@order.PaymentMethod</td>
+                                <td><span class="badge @order.Status.ToCssClass()">@order.Status.ToDisplay()</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

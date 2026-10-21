@@ -1,0 +1,28 @@
+@model WebDS_Test.Domain.Coupon
+@{
+    ViewData["Title"] = "New coupon";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">New coupon</h2>
+        <p class="text-muted small mb-0">Codes are matched case-insensitively and re-checked at order time.</p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Coupons" asp-action="Index">Back to coupons</a>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-9 col-xxl-7">
+        <form method="post" asp-area="Admin" asp-controller="Coupons" asp-action="Create">
+            <partial name="_Form" model="Model" />
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                <button type="submit" class="btn btn-primary">Create coupon</button>
+                <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Coupons" asp-action="Index">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

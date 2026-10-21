@@ -1,0 +1,685 @@
+/* ==========================================================================
+   themes.css — storefront themes: Amazon, eBay, Etsy.
+
+   Selectable via the Store.Theme configuration value (1 / 2 / 3), which is
+   rendered as the data-store-theme attribute on <html>. Each theme overrides
+   the brand CSS custom properties so the entire page re-skins without
+   touching markup. Theme-specific structural tweaks (header shape, button
+   radius, card elevation) are layered underneath.
+   ========================================================================== */
+
+/* ---------- Theme 1: Amazon-style ------------------------------------------
+   Dense, utilitarian marketplace. Dark header, orange accent, square corners.
+   -------------------------------------------------------------------------- */
+
+html[data-store-theme="1"] {
+    --brand-primary: #232f3e;
+    --brand-primary-dark: #1c2a38;
+    --brand-primary-darker: #141f2b;
+    --brand-primary-light: #3a4555;
+    --brand-primary-tint: #e7ecf0;
+
+    --brand-accent: #ff9900;
+    --brand-accent-dark: #f89c0c;
+
+    --brand-ink: #0f1111;
+    --brand-ink-muted: #565959;
+    --brand-ink-subtle: #71757a;
+
+    --brand-surface: #ffffff;
+    --brand-surface-muted: #f3f3f3;
+    --brand-surface-raised: #ffffff;
+
+    --brand-border: #c6c6c6;
+    --brand-border-strong: #b7b7b7;
+
+    --brand-danger: #c43;
+    --brand-success: #158629;
+
+    --brand-radius: 0px;
+    --brand-shadow: 0 1px 5px rgba(0, 0, 0, .2);
+
+    --brand-font: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Ubuntu,
+                  Cantarell, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Amazon header: dark bar, white text, orange search button. */
+html[data-store-theme="1"] .brand-header {
+    background-color: var(--brand-primary);
+    border-bottom-color: var(--brand-accent);
+    color: #fff;
+}
+html[data-store-theme="1"] .brand-header a,
+html[data-store-theme="1"] .brand-accountlink,
+html[data-store-theme="1"] .brand-wordmark .wordmark-liban {
+    color: #fff;
+}
+html[data-store-theme="1"] .brand-wordmark .wordmark-post {
+    color: var(--brand-accent);
+}
+html[data-store-theme="1"] .brand-nav {
+    border-bottom-color: var(--brand-accent);
+}
+html[data-store-theme="1"] .brand-nav .nav-link:hover,
+html[data-store-theme="1"] .brand-nav .nav-link.active {
+    color: var(--brand-accent);
+    border-bottom-color: var(--brand-accent);
+}
+html[data-store-theme="1"] .brand-search .btn {
+    background-color: var(--brand-accent);
+    border-color: var(--brand-accent);
+    color: #000;
+}
+html[data-store-theme="1"] .brand-search .btn:hover {
+    background-color: var(--brand-accent-dark);
+}
+html[data-store-theme="1"] .brand-utilitybar {
+    background-color: var(--brand-primary-dark);
+}
+html[data-store-theme="1"] .cart-pill {
+    background-color: var(--brand-primary-dark);
+    border-color: var(--brand-primary-dark);
+}
+
+/* Amazon product cards: square, thin border, subtle hover lift. */
+html[data-store-theme="1"] .card {
+    border-radius: 0;
+    box-shadow: none;
+}
+html[data-store-theme="1"] .card-hover:hover {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .15);
+    border-color: var(--brand-primary);
+}
+html[data-store-theme="1"] .product-thumb {
+    border-radius: 0;
+}
+
+/* Amazon buttons: orange fill, black text. */
+html[data-store-theme="1"] .btn-brand {
+    background-color: var(--brand-accent);
+    border-color: var(--brand-accent);
+    color: #000;
+    border-radius: 0;
+}
+html[data-store-theme="1"] .btn-brand:hover {
+    background-color: transparent;
+    color: #000;
+}
+
+/* ---------- Theme 2: eBay-style ------------------------------------------
+   Bold marketplace: red primary, blue secondary, yellow accent.
+   -------------------------------------------------------------------------- */
+
+html[data-store-theme="2"] {
+    --brand-primary: #0064d2;
+    --brand-primary-dark: #004c9c;
+    --brand-primary-darker: #003d7d;
+    --brand-primary-light: #4d93e0;
+    --brand-primary-tint: #e3f0ff;
+
+    --brand-accent: #e53238;
+    --brand-accent-dark: #c12025;
+
+    --brand-ink: #191919;
+    --brand-ink-muted: #5e5e5e;
+    --brand-ink-subtle: #8c8c8c;
+
+    --brand-surface: #ffffff;
+    --brand-surface-muted: #f2f2f2;
+    --brand-surface-raised: #ffffff;
+
+    --brand-border: #dadada;
+    --brand-border-strong: #c8c8c8;
+
+    --brand-danger: #e53238;
+    --brand-success: #237d3c;
+
+    --brand-radius: 3px;
+    --brand-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+
+    --brand-font: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Ubuntu,
+                  Cantarell, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* eBay header: red accent underline, blue primary. */
+html[data-store-theme="2"] .brand-header {
+    border-bottom: 3px solid var(--brand-accent);
+}
+html[data-store-theme="2"] .brand-nav {
+    border-bottom: 3px solid var(--brand-primary);
+}
+html[data-store-theme="2"] .brand-nav .nav-link:hover,
+html[data-store-theme="2"] .brand-nav .nav-link.active {
+    color: var(--brand-primary);
+    border-bottom-color: var(--brand-accent);
+}
+html[data-store-theme="2"] .brand-search .btn {
+    background-color: var(--brand-accent);
+    border-color: var(--brand-accent);
+    color: #fff;
+}
+html[data-store-theme="2"] .brand-search .btn:hover {
+    background-color: var(--brand-accent-dark);
+    color: #fff;
+}
+html[data-store-theme="2"] .brand-utilitybar {
+    background-color: var(--brand-primary-dark);
+}
+
+/* eBay buttons: blue primary, red accent. */
+html[data-store-theme="2"] .btn-brand {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: #fff;
+    border-radius: 3px;
+}
+html[data-store-theme="2"] .btn-brand:hover {
+    background-color: var(--brand-primary-dark);
+    color: #fff;
+}
+
+/* eBay product cards: slight radius, hover shadow. */
+html[data-store-theme="2"] .card-hover:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .12);
+    border-color: var(--brand-primary);
+}
+html[data-store-theme="2"] .product-thumb {
+    border-radius: 3px;
+}
+
+/* eBay badges: vibrant. */
+html[data-store-theme="2"] .badge-sale {
+    background-color: var(--brand-accent);
+    color: #fff;
+}
+html[data-store-theme="2"] .badge-featured {
+    background-color: #feca00;
+    color: #000;
+}
+
+/* ---------- Theme 3: Etsy-style ------------------------------------------
+   Warm, artisanal: coral primary, yellow accent, rounded corners, serif
+   headings. Earthy surfaces.
+   -------------------------------------------------------------------------- */
+
+html[data-store-theme="3"] {
+    --brand-primary: #eb6d51;
+    --brand-primary-dark: #d46247;
+    --brand-primary-darker: #be563d;
+    --brand-primary-light: #f0917f;
+    --brand-primary-tint: #fdebe6;
+
+    --brand-accent: #ffd24d;
+    --brand-accent-dark: #f9c73e;
+
+    --brand-ink: #3d3d3d;
+    --brand-ink-muted: #8c7a6b;
+    --brand-ink-subtle: #b3a798;
+
+    --brand-surface: #ffffff;
+    --brand-surface-muted: #faf6f0;
+    --brand-surface-raised: #f5ede0;
+
+    --brand-border: #d9cab3;
+    --brand-border-strong: #c9b8a3;
+
+    --brand-danger: #eb6d51;
+    --brand-success: #73954c;
+
+    --brand-radius: 8px;
+    --brand-shadow: 0 2px 10px rgba(61, 61, 61, .08);
+
+    --brand-font: Georgia, 'Times New Roman', serif;
+}
+
+/* Etsy headings: serif, warm. */
+html[data-store-theme="3"] h1,
+html[data-store-theme="3"] h2,
+html[data-store-theme="3"] h3,
+html[data-store-theme="3"] h4 {
+    font-family: var(--brand-font);
+    letter-spacing: .2px;
+}
+
+/* Etsy header: coral underline, warm wordmark. */
+html[data-store-theme="3"] .brand-header {
+    border-bottom: 3px solid var(--brand-primary);
+}
+html[data-store-theme="3"] .brand-wordmark .wordmark-liban {
+    color: var(--brand-primary-dark);
+}
+html[data-store-theme="3"] .brand-wordmark .wordmark-post {
+    color: var(--brand-accent-dark);
+}
+html[data-store-theme="3"] .brand-nav {
+    border-bottom: 3px solid var(--brand-primary-dark);
+}
+html[data-store-theme="3"] .brand-nav .nav-link:hover,
+html[data-store-theme="3"] .brand-nav .nav-link.active {
+    color: var(--brand-primary-dark);
+    border-bottom-color: var(--brand-accent);
+}
+html[data-store-theme="3"] .brand-search .btn {
+    background-color: var(--brand-accent);
+    border-color: var(--brand-accent);
+    color: #3d3d3d;
+}
+html[data-store-theme="3"] .brand-search .btn:hover {
+    background-color: var(--brand-accent-dark);
+}
+
+/* Etsy buttons: coral fill, rounded. */
+html[data-store-theme="3"] .btn-brand {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: #fff;
+    border-radius: 6px;
+}
+html[data-store-theme="3"] .btn-brand:hover {
+    background-color: var(--brand-primary-dark);
+    color: #fff;
+}
+
+/* Etsy cards: rounded, warm shadow, soft hover. */
+html[data-store-theme="3"] .card {
+    border-radius: 8px;
+    border-color: var(--brand-border);
+}
+html[data-store-theme="3"] .card-hover:hover {
+    box-shadow: 0 6px 18px rgba(61, 61, 61, .12);
+    border-color: var(--brand-primary);
+    transform: translateY(-2px);
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+html[data-store-theme="3"] .product-thumb {
+    border-radius: 8px;
+    overflow: hidden;
+}
+html[data-store-theme="3"] .product-thumb img {
+    transition: transform .3s ease;
+}
+html[data-store-theme="3"] .card-hover:hover .product-thumb img {
+    transform: scale(1.03);
+}
+
+/* Etsy badges: warm. */
+html[data-store-theme="3"] .badge-sale {
+    background-color: var(--brand-primary);
+    color: #fff;
+}
+html[data-store-theme="3"] .badge-featured {
+    background-color: var(--brand-accent);
+    color: #3d3d3d;
+}
+
+/* Etsy footer: deeper coral. */
+html[data-store-theme="3"] .site-footer {
+    background-color: var(--brand-primary-dark);
+}
+
+/* ---------- Theme-agnostic refinements ---------------------------------- */
+
+html[data-store-theme="1"] .stat-card,
+html[data-store-theme="2"] .stat-card,
+html[data-store-theme="3"] .stat-card {
+    border-left-width: 0;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+}
+
+html[data-store-theme="1"] .stat-card .stat-value,
+html[data-store-theme="2"] .stat-card .stat-value,
+html[data-store-theme="3"] .stat-card .stat-value {
+    color: var(--brand-primary-dark);
+}
+
+/* ---------- Bootstrap btn-primary overrides per theme --------------------
+   site.css hardcodes btn-primary to indigo; themes re-claim it. ---------- */
+
+html[data-store-theme="1"] .btn-primary {
+    --bs-btn-bg: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary-dark);
+    --bs-btn-hover-border-color: var(--brand-primary-dark);
+    --bs-btn-active-bg: var(--brand-primary-darker);
+    --bs-btn-active-border-color: var(--brand-primary-darker);
+    --bs-btn-disabled-bg: var(--brand-primary-light);
+    --bs-btn-disabled-border-color: var(--brand-primary-light);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+}
+html[data-store-theme="2"] .btn-primary {
+    --bs-btn-bg: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary-dark);
+    --bs-btn-hover-border-color: var(--brand-primary-dark);
+    --bs-btn-active-bg: var(--brand-primary-darker);
+    --bs-btn-active-border-color: var(--brand-primary-darker);
+    --bs-btn-disabled-bg: var(--brand-primary-light);
+    --bs-btn-disabled-border-color: var(--brand-primary-light);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+}
+html[data-store-theme="3"] .btn-primary {
+    --bs-btn-bg: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary-dark);
+    --bs-btn-hover-border-color: var(--brand-primary-dark);
+    --bs-btn-active-bg: var(--brand-primary-darker);
+    --bs-btn-active-border-color: var(--brand-primary-darker);
+    --bs-btn-disabled-bg: var(--brand-primary-light);
+    --bs-btn-disabled-border-color: var(--brand-primary-light);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+}
+
+html[data-store-theme="1"] .btn-outline-primary {
+    --bs-btn-color: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary);
+    --bs-btn-hover-border-color: var(--brand-primary);
+    --bs-btn-hover-color: #fff;
+}
+html[data-store-theme="2"] .btn-outline-primary {
+    --bs-btn-color: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary);
+    --bs-btn-hover-border-color: var(--brand-primary);
+    --bs-btn-hover-color: #fff;
+}
+html[data-store-theme="3"] .btn-outline-primary {
+    --bs-btn-color: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary);
+    --bs-btn-hover-border-color: var(--brand-primary);
+    --bs-btn-hover-color: #fff;
+}
+
+/* Link color per theme (site.css hardcodes indigo otherwise). */
+html[data-store-theme="1"] a { color: var(--brand-primary); }
+html[data-store-theme="1"] a:hover { color: var(--brand-accent-dark); }
+html[data-store-theme="2"] a { color: var(--brand-primary); }
+html[data-store-theme="2"] a:hover { color: var(--brand-accent-dark); }
+html[data-store-theme="3"] a { color: var(--brand-primary-dark); }
+html[data-store-theme="3"] a:hover { color: var(--brand-accent-dark); }
+
+html[data-store-theme="1"] .text-primary { color: var(--brand-primary) !important; }
+html[data-store-theme="2"] .text-primary { color: var(--brand-primary) !important; }
+html[data-store-theme="3"] .text-primary { color: var(--brand-primary-dark) !important; }
+
+/* ---------- Theme 4: Midnight & Gold ---------------------------------------
+   Elegant boutique marketplace. Deep slate-navy primary, warm gold accent,
+   serif headings, soft cream surfaces, and refined rounded corners.
+   -------------------------------------------------------------------------- */
+
+html[data-store-theme="4"] {
+    --brand-primary: #1f2a44;
+    --brand-primary-dark: #162238;
+    --brand-primary-darker: #0f182b;
+    --brand-primary-light: #3b4a6b;
+    --brand-primary-tint: #e8ebf2;
+
+    --brand-accent: #c9a227;
+    --brand-accent-dark: #b0891f;
+
+    --brand-ink: #212529;
+    --brand-ink-muted: #5a6472;
+    --brand-ink-subtle: #8a94a3;
+
+    --brand-surface: #ffffff;
+    --brand-surface-muted: #f5f3ee;
+    --brand-surface-raised: #faf8f3;
+
+    --brand-border: #d8d3c6;
+    --brand-border-strong: #c9c2b3;
+
+    --brand-danger: #8e3b3b;
+    --brand-success: #3a6b35;
+
+    --brand-radius: 6px;
+    --brand-shadow: 0 4px 14px rgba(31, 42, 68, .10);
+
+    --brand-font: Georgia, 'Times New Roman', serif;
+}
+
+/* Theme 4 headings: refined serif, wide tracking. */
+html[data-store-theme="4"] h1,
+html[data-store-theme="4"] h2,
+html[data-store-theme="4"] h3,
+html[data-store-theme="4"] h4 {
+    font-family: var(--brand-font);
+    letter-spacing: .3px;
+    font-weight: 700;
+}
+
+/* Theme 4 header: deep navy bar, gold wordmark accent. */
+html[data-store-theme="4"] .brand-header {
+    background-color: var(--brand-primary);
+    border-bottom: 2px solid var(--brand-accent);
+    color: #fff;
+}
+html[data-store-theme="4"] .brand-header a,
+html[data-store-theme="4"] .brand-accountlink,
+html[data-store-theme="4"] .brand-wordmark .wordmark-liban {
+    color: #fff;
+}
+html[data-store-theme="4"] .brand-wordmark .wordmark-post {
+    color: var(--brand-accent);
+}
+html[data-store-theme="4"] .brand-nav {
+    border-bottom: 2px solid var(--brand-accent);
+}
+html[data-store-theme="4"] .brand-nav .nav-link {
+    color: var(--brand-surface);
+}
+html[data-store-theme="4"] .brand-nav .nav-link:hover,
+html[data-store-theme="4"] .brand-nav .nav-link.active {
+    color: var(--brand-accent);
+    border-bottom-color: var(--brand-accent);
+}
+html[data-store-theme="4"] .brand-search .btn {
+    background-color: var(--brand-accent);
+    border-color: var(--brand-accent);
+    color: #1f2a44;
+}
+html[data-store-theme="4"] .brand-search .btn:hover {
+    background-color: var(--brand-accent-dark);
+    color: #1f2a44;
+}
+html[data-store-theme="4"] .brand-utilitybar {
+    background-color: var(--brand-primary-dark);
+}
+html[data-store-theme="4"] .cart-pill {
+    background-color: var(--brand-accent);
+    border-color: var(--brand-accent);
+    color: #1f2a44;
+}
+html[data-store-theme="4"] .cart-pill:hover {
+    background-color: transparent;
+    color: var(--brand-accent);
+    border-color: var(--brand-accent);
+}
+
+/* Theme 4 product cards: elegant rounded, soft shadow, image zoom on hover. */
+html[data-store-theme="4"] .card {
+    border-radius: var(--brand-radius);
+    border: 1px solid var(--brand-border);
+    box-shadow: none;
+}
+html[data-store-theme="4"] .card-hover:hover {
+    box-shadow: 0 8px 24px rgba(31, 42, 68, .14);
+    border-color: var(--brand-accent);
+    transform: translateY(-3px);
+    transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+html[data-store-theme="4"] .product-thumb {
+    border-radius: var(--brand-radius);
+    overflow: hidden;
+}
+html[data-store-theme="4"] .product-thumb img {
+    transition: transform .4s ease;
+}
+html[data-store-theme="4"] .card-hover:hover .product-thumb img {
+    transform: scale(1.04);
+}
+
+/* Theme 4 buttons: gold fill on primary, navy on accent. */
+html[data-store-theme="4"] .btn-brand {
+    background-color: var(--brand-accent);
+    border-color: var(--brand-accent);
+    color: #1f2a44;
+    border-radius: var(--brand-radius);
+}
+html[data-store-theme="4"] .btn-brand:hover {
+    background-color: var(--brand-accent-dark);
+    color: #1f2a44;
+}
+html[data-store-theme="4"] .btn-outline-primary {
+    color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+html[data-store-theme="4"] .btn-outline-primary:hover {
+    background-color: var(--brand-primary);
+    color: #fff;
+}
+
+/* Theme 4 badges: gold and navy. */
+html[data-store-theme="4"] .badge-sale {
+    background-color: var(--brand-accent-dark);
+    color: #fff;
+}
+html[data-store-theme="4"] .badge-featured {
+    background-color: var(--brand-accent);
+    color: #1f2a44;
+}
+
+/* Theme 4 footer: deep navy with gold divider. */
+html[data-store-theme="4"] .site-footer {
+    background-color: var(--brand-primary-dark);
+    border-top: 2px solid var(--brand-accent);
+}
+
+/* Theme 4 stat cards: subtle navy border, gold-tinted values. */
+html[data-store-theme="4"] .stat-card {
+    border-left-width: 0;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+    background: var(--brand-surface-raised);
+}
+html[data-store-theme="4"] .stat-card .stat-value {
+    color: var(--brand-primary-dark);
+}
+
+/* ---------- Theme-agnostic refinements ---------------------------------- */
+
+html[data-store-theme="1"] .stat-card,
+html[data-store-theme="2"] .stat-card,
+html[data-store-theme="3"] .stat-card,
+html[data-store-theme="4"] .stat-card {
+    border-left-width: 0;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+}
+
+html[data-store-theme="1"] .stat-card .stat-value,
+html[data-store-theme="2"] .stat-card .stat-value,
+html[data-store-theme="3"] .stat-card .stat-value,
+html[data-store-theme="4"] .stat-card .stat-value {
+    color: var(--brand-primary-dark);
+}
+
+/* ---------- Bootstrap btn-primary overrides per theme --------------------
+   site.css hardcodes btn-primary to indigo; themes re-claim it. ---------- */
+
+html[data-store-theme="1"] .btn-primary {
+    --bs-btn-bg: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary-dark);
+    --bs-btn-hover-border-color: var(--brand-primary-dark);
+    --bs-btn-active-bg: var(--brand-primary-darker);
+    --bs-btn-active-border-color: var(--brand-primary-darker);
+    --bs-btn-disabled-bg: var(--brand-primary-light);
+    --bs-btn-disabled-border-color: var(--brand-primary-light);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+}
+html[data-store-theme="2"] .btn-primary {
+    --bs-btn-bg: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary-dark);
+    --bs-btn-hover-border-color: var(--brand-primary-dark);
+    --bs-btn-active-bg: var(--brand-primary-darker);
+    --bs-btn-active-border-color: var(--brand-primary-darker);
+    --bs-btn-disabled-bg: var(--brand-primary-light);
+    --bs-btn-disabled-border-color: var(--brand-primary-light);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+}
+html[data-store-theme="3"] .btn-primary {
+    --bs-btn-bg: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary-dark);
+    --bs-btn-hover-border-color: var(--brand-primary-dark);
+    --bs-btn-active-bg: var(--brand-primary-darker);
+    --bs-btn-active-border-color: var(--brand-primary-darker);
+    --bs-btn-disabled-bg: var(--brand-primary-light);
+    --bs-btn-disabled-border-color: var(--brand-primary-light);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+}
+html[data-store-theme="4"] .btn-primary {
+    --bs-btn-bg: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary-dark);
+    --bs-btn-hover-border-color: var(--brand-primary-dark);
+    --bs-btn-active-bg: var(--brand-primary-darker);
+    --bs-btn-active-border-color: var(--brand-primary-darker);
+    --bs-btn-disabled-bg: var(--brand-primary-light);
+    --bs-btn-disabled-border-color: var(--brand-primary-light);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+}
+
+html[data-store-theme="1"] .btn-outline-primary {
+    --bs-btn-color: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary);
+    --bs-btn-hover-border-color: var(--brand-primary);
+    --bs-btn-hover-color: #fff;
+}
+html[data-store-theme="2"] .btn-outline-primary {
+    --bs-btn-color: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary);
+    --bs-btn-hover-border-color: var(--brand-primary);
+    --bs-btn-hover-color: #fff;
+}
+html[data-store-theme="3"] .btn-outline-primary {
+    --bs-btn-color: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary);
+    --bs-btn-hover-border-color: var(--brand-primary);
+    --bs-btn-hover-color: #fff;
+}
+html[data-store-theme="4"] .btn-outline-primary {
+    --bs-btn-color: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary);
+    --bs-btn-hover-border-color: var(--brand-primary);
+    --bs-btn-hover-color: #fff;
+}
+
+/* Link color per theme (site.css hardcodes indigo otherwise). */
+html[data-store-theme="1"] a { color: var(--brand-primary); }
+html[data-store-theme="1"] a:hover { color: var(--brand-accent-dark); }
+html[data-store-theme="2"] a { color: var(--brand-primary); }
+html[data-store-theme="2"] a:hover { color: var(--brand-accent-dark); }
+html[data-store-theme="3"] a { color: var(--brand-primary-dark); }
+html[data-store-theme="3"] a:hover { color: var(--brand-accent-dark); }
+html[data-store-theme="4"] a { color: var(--brand-primary-dark); }
+html[data-store-theme="4"] a:hover { color: var(--brand-accent-dark); }
+
+html[data-store-theme="1"] .text-primary { color: var(--brand-primary) !important; }
+html[data-store-theme="2"] .text-primary { color: var(--brand-primary) !important; }
+html[data-store-theme="3"] .text-primary { color: var(--brand-primary-dark) !important; }
+html[data-store-theme="4"] .text-primary { color: var(--brand-primary-dark) !important; }

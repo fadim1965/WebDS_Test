@@ -1,0 +1,97 @@
+@model IReadOnlyList<Address>
+@{
+    ViewData["Title"] = "Address book";
+
+    var addresses = Model ?? Array.Empty<Address>();
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Address book</h1>
+        <p class="text-muted small mb-0">
+            Saved addresses are offered at checkout so you do not have to retype them.
+        </p>
+    </div>
+    <a class="btn btn-primary" asp-controller="Account" asp-action="EditAddress">Add an address</a>
+</div>
+
+@if (addresses.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <h2 class="h5">No saved addresses</h2>
+            <p class="text-muted mb-3">
+                Add an address now, or save one automatically the next time you check out.
+            </p>
+            <div class="d-flex flex-wrap justify-content-center gap-2">
+                <a class="btn btn-primary" asp-controller="Account" asp-action="EditAddress">Add an address</a>
+                <a class="btn btn-outline-secondary" asp-controller="Catalog" asp-action="Index">Continue shopping</a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var address in addresses)
+        {
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <span class="fw-semibold">@address.FullName</span>
+                            @if (address.IsDefault)
+                            {
+                                <span class="badge text-bg-info">Default</span>
+                            }
+                        </div>
+
+                        <address class="mb-2">
+                            @address.Line1<br />
+                            @if (!string.IsNullOrWhiteSpace(address.Line2))
+                            {
+                                @address.Line2
+                                <br />
+                            }
+                            @address.City@(string.IsNullOrWhiteSpace(address.State) ? string.Empty : ", " + address.State) @address.PostalCode<br />
+                            @address.Country
+                        </address>
+
+                        @if (!string.IsNullOrWhiteSpace(address.Phone))
+                        {
+                            <p class="text-muted small mb-2">Phone: @address.Phone</p>
+                        }
+
+                        <p class="text-muted small mb-3">Added @address.CreatedUtc.ToString("d MMM yyyy")</p>
+
+                        <div class="mt-auto d-flex flex-wrap gap-2">
+                            <a class="btn btn-sm btn-outline-primary"
+                               asp-controller="Account" asp-action="EditAddress" asp-route-id="@address.Id">Edit</a>
+
+                            @if (!address.IsDefault)
+                            {
+                                <form method="post" asp-controller="Account" asp-action="SetDefaultAddress">
+                                    <input type="hidden" name="id" value="@address.Id" />
+                                    <button class="btn btn-sm btn-outline-secondary" type="submit">Make default</button>
+                                </form>
+                            }
+
+                            <form method="post" asp-controller="Account" asp-action="DeleteAddress"
+                                  onsubmit="return confirm('Remove this address?');">
+                                <input type="hidden" name="id" value="@address.Id" />
+                                <button class="btn btn-sm btn-outline-danger" type="submit"
+                                        aria-label="Delete the address for @address.FullName">
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <p class="text-muted small mt-3 mb-0">
+        The default address is pre-filled the next time you check out.
+    </p>
+}

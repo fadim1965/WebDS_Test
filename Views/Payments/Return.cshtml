@@ -1,0 +1,46 @@
+@model Order
+@{
+    ViewData["Title"] = $"Payment for {Model.OrderNumber}";
+    var paid = Model.Status is OrderStatus.Paid or OrderStatus.Shipped or OrderStatus.Delivered;
+    var failed = !paid && Model.Payments.Any(p => p.Status == PaymentStatus.Failed);
+    var waiting = !paid && !failed && Model.Status == OrderStatus.Pending;
+}
+
+<h1 class="h3 mb-3">Payment</h1>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><h2 class="h6 mb-0">Order @Model.OrderNumber</h2></div>
+            <div class="card-body">
+                @if (paid)
+                {
+                    <div class="alert alert-success">Payment received — thank you. Your order is confirmed.</div>
+                    <a asp-controller="Checkout" asp-action="Confirmation" asp-route-id="@Model.Id" class="btn btn-primary">
+                        View order
+                    </a>
+                }
+                else if (failed)
+                {
+                    <div class="alert alert-danger">Your payment was declined, so this order is still awaiting payment.</div>
+                    <a asp-action="Pay" asp-route-id="@Model.Id" class="btn btn-primary">Try payment again</a>
+                }
+                else if (waiting)
+                {
+                    <div class="alert alert-info">
+                        We are waiting for the payment provider to confirm your payment. Refresh this page in a
+                        moment; it updates as soon as the confirmation arrives.
+                    </div>
+                    <a asp-action="Pay" asp-route-id="@Model.Id" class="btn btn-outline-primary">Continue to payment</a>
+                }
+                else
+                {
+                    <div class="alert alert-secondary">This order is @Model.Status.ToDisplay().</div>
+                    <a asp-controller="Checkout" asp-action="Confirmation" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+                        View order
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

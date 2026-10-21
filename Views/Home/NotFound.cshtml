@@ -1,0 +1,52 @@
+@model WebDS_Test.Controllers.NotFoundViewModel
+@{
+    ViewData["Title"] = "Page not found";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-9 col-lg-7">
+        <div class="card">
+            <div class="card-body text-center p-5">
+                <div class="display-5 mb-2" aria-hidden="true">@Model.StatusCode</div>
+
+                @if (Model.StatusCode == 404)
+                {
+                    <h1 class="h3 mb-2">We couldn't find that page</h1>
+                    <p class="text-muted mb-4">
+                        The link may be out of date, or the product may have been withdrawn. Nothing is broken
+                        on your side — try the catalogue or the search box at the top of the page.
+                    </p>
+                }
+                else
+                {
+                    <h1 class="h3 mb-2">That request could not be completed</h1>
+                    <p class="text-muted mb-4">
+                        The server returned status @Model.StatusCode. Try again from the store home page, or
+                        browse the catalogue.
+                    </p>
+                }
+
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Back to the store</a>
+                    <a class="btn btn-outline-secondary" asp-controller="Catalog" asp-action="Index">Browse products</a>
+                    <a class="btn btn-outline-secondary" asp-controller="Orders" asp-action="Track">Track an order</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Suggestions.Count > 0)
+{
+    <section class="mt-5">
+        <h2 class="h4 mb-3">Popular right now</h2>
+        <div class="row row-cols-2 row-cols-md-4 g-3">
+            @foreach (var card in Model.Suggestions)
+            {
+                <div class="col">
+                    <partial name="_ProductCard" model="card" />
+                </div>
+            }
+        </div>
+    </section>
+}

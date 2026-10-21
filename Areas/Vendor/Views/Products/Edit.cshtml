@@ -1,0 +1,331 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Microsoft.Extensions.Options
+@model WebDS_Test.Areas.Admin.Models.ProductEditViewModel
+@inject IOptions<StoreSettings> StoreOptions
+@{
+    var currency = StoreOptions.Value.CurrencySymbol;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">@(Model.IsNew ? "New product" : "Edit product")</h2>
+        <p class="text-muted small mb-0">
+            @(Model.IsNew
+                ? "Fill in the details and save to create the product."
+                : "Changes take effect on the storefront as soon as they are saved.")
+        </p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-area="Vendor" asp-controller="Products" asp-action="Index">Back to products</a>
+</div>
+
+@* A single POST carries the product, its variants and its gallery. The encoding is multipart so the
+   same form can carry selected image files alongside the URL lines. *@
+<form id="product-form" method="post" enctype="multipart/form-data" asp-area="Vendor" asp-controller="Products" asp-action="Save">
+    <input type="hidden" asp-for="Id" />
+
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <div class="row g-3">
+        <div class="col-12 col-xl-8">
+            <div class="card mb-3">
+                <div class="card-header bg-white fw-semibold">Details</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label required-label" asp-for="Name">Name</label>
+                        <input asp-for="Name" class="form-control" placeholder="e.g. Merino wool throw" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Slug">URL slug</label>
+                        <input asp-for="Slug" class="form-control" placeholder="merino-wool-throw" />
+                        <div class="form-text">Leave blank to generate a slug from the product name.</div>
+                        <span asp-validation-for="Slug" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Brand">Brand</label>
+                        <input asp-for="Brand" class="form-control" />
+                        <span asp-validation-for="Brand" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="ShortDescription">Short description</label>
+                        <textarea asp-for="ShortDescription" class="form-control" rows="2"></textarea>
+                        <div class="form-text">One line shown on product cards and in search results.</div>
+                        <span asp-validation-for="ShortDescription" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label" asp-for="Description">Description</label>
+                        <textarea asp-for="Description" class="form-control" rows="8"></textarea>
+                        <span asp-validation-for="Description" class="text-danger small"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <span class="fw-semibold">Variants</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="add-variant">Add variant</button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-2">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="min-width:9rem;">SKU</th>
+                                    <th scope="col" style="min-width:8rem;">Option</th>
+                                    <th scope="col" style="min-width:7rem;">Price <span class="text-muted">@currency</span></th>
+                                    <th scope="col" style="min-width:7rem;">Was</th>
+                                    <th scope="col" style="min-width:5.5rem;">Stock</th>
+                                    <th scope="col" style="min-width:5.5rem;">Low at</th>
+                                    <th scope="col" class="text-center">Active</th>
+                                    <th scope="col" class="text-center">Remove</th>
+                                </tr>
+                            </thead>
+                            <tbody id="variant-rows">
+                                @for (var i = 0; i < Model.Variants.Count; i++)
+                                {
+                                    <tr>
+                                        <td>
+                                            <input type="hidden" asp-for="Variants[i].Id" />
+                                            <input asp-for="Variants[i].Sku" class="form-control form-control-sm" />
+                                            <span asp-validation-for="Variants[i].Sku" class="text-danger small"></span>
+                                        </td>
+                                        <td>
+                                            <input asp-for="Variants[i].Name" class="form-control form-control-sm" />
+                                            <span asp-validation-for="Variants[i].Name" class="text-danger small"></span>
+                                        </td>
+                                        <td>
+                                            <input asp-for="Variants[i].Price" type="number" step="0.01" min="0" class="form-control form-control-sm" />
+                                            <span asp-validation-for="Variants[i].Price" class="text-danger small"></span>
+                                        </td>
+                                        <td>
+                                            <input asp-for="Variants[i].CompareAtPrice" type="number" step="0.01" min="0" class="form-control form-control-sm" />
+                                            <span asp-validation-for="Variants[i].CompareAtPrice" class="text-danger small"></span>
+                                        </td>
+                                        <td>
+                                            <input asp-for="Variants[i].StockQuantity" type="number" step="1" min="0" class="form-control form-control-sm" />
+                                            <span asp-validation-for="Variants[i].StockQuantity" class="text-danger small"></span>
+                                        </td>
+                                        <td>
+                                            <input asp-for="Variants[i].LowStockThreshold" type="number" step="1" min="0" class="form-control form-control-sm" />
+                                            <span asp-validation-for="Variants[i].LowStockThreshold" class="text-danger small"></span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="form-check d-flex justify-content-center mb-0">
+                                                <input asp-for="Variants[i].IsActive" class="form-check-input"
+                                                       aria-label="Variant is active and can be sold" />
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="form-check d-flex justify-content-center mb-0">
+                                                <input asp-for="Variants[i].Delete" class="form-check-input" />
+                                                <label class="form-check-label visually-hidden" asp-for="Variants[i].Delete">Remove</label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+
+                                @if (Model.Variants.Count == 0)
+                                {
+                                    <tr id="variant-empty-row">
+                                        <td colspan="8" class="text-muted small">
+                                            No variants yet — a product needs at least one variant before it can be sold.
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p class="form-text mb-0">
+                        A variant is a sellable unit: its own SKU, price and stock. Leave <em>Was</em> empty unless the
+                        price is reduced. Ticking <em>Remove</em> retires the variant (or deactivates it when it has
+                        already been ordered).
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+            <div class="card mb-3">
+                <div class="card-header bg-white fw-semibold">Organisation</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label required-label" asp-for="CategoryId">Category</label>
+                        <select asp-for="CategoryId" asp-items="@(new SelectList(Model.Categories, "Id", "Name"))" class="form-select"></select>
+                        <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-check mb-2">
+                        <input asp-for="IsPublished" class="form-check-input" />
+                        <label class="form-check-label" asp-for="IsPublished">Published</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input asp-for="IsFeatured" class="form-check-input" />
+                        <label class="form-check-label" asp-for="IsFeatured">Featured</label>
+                    </div>
+                    <div class="form-text">Unpublished products are hidden from the storefront and cannot be bought.</div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-white fw-semibold">Images</div>
+                <div class="card-body">
+                    <label class="form-label" asp-for="ImageUrls">Image URLs</label>
+                    <textarea asp-for="ImageUrls" class="form-control" rows="5" placeholder="/images/products/example.jpg"></textarea>
+                    <div class="form-text">
+                        One URL or path per line. The first line is the primary image used in listings; the rest make up
+                        the gallery.
+                    </div>
+                    <span asp-validation-for="ImageUrls" class="text-danger small"></span>
+
+                    <hr class="my-3" />
+
+                    <label class="form-label" asp-for="ImageFiles">Upload images</label>
+                    <input asp-for="ImageFiles" type="file" class="form-control" accept=".jpg,.jpeg,.png,.gif,.webp,image/*" multiple />
+                    <div class="form-text">
+                        JPG, PNG, GIF or WebP, up to 5&nbsp;MB each. Uploaded files are appended to the list above
+                        when you save, so line one stays the primary image.
+                    </div>
+                    <span asp-validation-for="ImageFiles" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-body d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-primary">Save product</button>
+                    <a class="btn btn-outline-secondary" asp-area="Vendor" asp-controller="Products" asp-action="Index">Cancel</a>
+                    @if (!Model.IsNew && !string.IsNullOrWhiteSpace(Model.Slug))
+                    {
+                        <a class="btn btn-outline-secondary"
+                           asp-area="" asp-controller="Products" asp-action="Details" asp-route-slug="@Model.Slug">View in shop</a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @*
+        Blueprint for rows created by the "Add variant" button. The indices are placeholders that the
+        script substitutes with the next free index, so a template row is never posted as-is and the
+        form stays valid even when the administrator never adds a variant.
+    *@
+    <template id="variant-template">
+        <tr>
+            <td>
+                <input type="hidden" name="Variants[__index__].Id" value="0" />
+                <input type="text" class="form-control form-control-sm" name="Variants[__index__].Sku" id="Variants___index____Sku"
+                       data-val="true" data-val-required="Every variant needs a SKU." />
+                <span class="text-danger small" data-valmsg-for="Variants[__index__].Sku" data-valmsg-replace="true"></span>
+            </td>
+            <td>
+                <input type="text" class="form-control form-control-sm" name="Variants[__index__].Name" id="Variants___index____Name" />
+            </td>
+            <td>
+                <input type="number" step="0.01" min="0" value="0.00" class="form-control form-control-sm"
+                       name="Variants[__index__].Price" id="Variants___index____Price" />
+            </td>
+            <td>
+                <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                       name="Variants[__index__].CompareAtPrice" id="Variants___index____CompareAtPrice" />
+            </td>
+            <td>
+                <input type="number" step="1" min="0" value="0" class="form-control form-control-sm"
+                       name="Variants[__index__].StockQuantity" id="Variants___index____StockQuantity" />
+            </td>
+            <td>
+                <input type="number" step="1" min="0" value="5" class="form-control form-control-sm"
+                       name="Variants[__index__].LowStockThreshold" id="Variants___index____LowStockThreshold" />
+            </td>
+            <td class="text-center">
+                <div class="form-check d-flex justify-content-center mb-0">
+                    <input type="checkbox" class="form-check-input" value="true" checked
+                           name="Variants[__index__].IsActive" id="Variants___index____IsActive"
+                           aria-label="Variant is active and can be sold" />
+                    <input type="hidden" name="Variants[__index__].IsActive" value="false" />
+                </div>
+            </td>
+            <td class="text-center">
+                <div class="form-check d-flex justify-content-center mb-0">
+                    <input type="checkbox" class="form-check-input" value="true"
+                           name="Variants[__index__].Delete" id="Variants___index____Delete" />
+                    <input type="hidden" name="Variants[__index__].Delete" value="false" />
+                    <label class="form-check-label visually-hidden" for="Variants___index____Delete">Remove</label>
+                </div>
+            </td>
+        </tr>
+    </template>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        (function () {
+            var form = document.getElementById('product-form');
+            var template = document.getElementById('variant-template');
+            var rows = document.getElementById('variant-rows');
+            var addButton = document.getElementById('add-variant');
+
+            if (!form || !template || !rows || !addButton) {
+                return;
+            }
+
+            // The highest Variants[n] index currently on the page, plus one.
+            function nextIndex() {
+                var highest = -1;
+                var inputs = rows.querySelectorAll('input[name]');
+                for (var i = 0; i < inputs.length; i++) {
+                    var match = /^Variants\[(\d+)\]/.exec(inputs[i].getAttribute('name') || '');
+                    if (match) {
+                        var index = parseInt(match[1], 10);
+                        if (index > highest) {
+                            highest = index;
+                        }
+                    }
+                }
+                return highest + 1;
+            }
+
+            // The unobtrusive validator only knows about the elements present when it first parsed
+            // the form, so freshly added rows have to be registered with it.
+            function reparseValidation() {
+                var jq = window.jQuery;
+                if (jq && jq.validator && jq.validator.unobtrusive) {
+                    jq(form).removeData('validator').removeData('unobtrusiveValidation');
+                    jq.validator.unobtrusive.parse(form);
+                }
+            }
+
+            addButton.addEventListener('click', function () {
+                var index = nextIndex();
+                var markup = template.innerHTML.split('__index__').join(String(index));
+
+                var holder = document.createElement('tbody');
+                holder.innerHTML = markup;
+
+                var row = holder.querySelector('tr');
+                if (!row) {
+                    return;
+                }
+
+                var empty = document.getElementById('variant-empty-row');
+                if (empty && empty.parentNode) {
+                    empty.parentNode.removeChild(empty);
+                }
+
+                rows.appendChild(row);
+                reparseValidation();
+
+                var firstInput = row.querySelector('input[type=text]');
+                if (firstInput) {
+                    firstInput.focus();
+                }
+            });
+        })();
+    </script>
+}
+

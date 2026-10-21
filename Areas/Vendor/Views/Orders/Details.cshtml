@@ -1,0 +1,259 @@
+@model WebDS_Test.Domain.Order
+@using WebDS_Test.Domain
+@{
+    ViewData["Title"] = Model.OrderNumber;
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">@Model.OrderNumber</h1>
+            <p class="text-muted mb-0">Placed @Model.PlacedUtc.ToString("d MMM yyyy HH:mm") UTC</p>
+        </div>
+        <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Orders" asp-action="Index">All orders</a>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-12 col-lg-8">
+            <div class="card h-100">
+                <div class="card-header bg-white fw-semibold">Items</div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Product</th>
+                                <th scope="col">SKU</th>
+                                <th scope="col" class="text-end">Qty</th>
+                                <th scope="col" class="text-end">Unit</th>
+                                <th scope="col" class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in Model.Lines)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">@line.ProductName</div>
+                                        @if (!string.IsNullOrWhiteSpace(line.VariantName))
+                                        {
+                                            <div class="small text-muted">@line.VariantName</div>
+                                        }
+                                    </td>
+                                    <td><code class="small">@line.Sku</code></td>
+                                    <td class="text-end">@line.Quantity</td>
+                                    <td class="text-end">@line.UnitPrice.ToString("N2")</td>
+                                    <td class="text-end fw-semibold">@line.LineTotal.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header bg-white fw-semibold">Status</div>
+                <div class="card-body">
+                    <span class="badge @Model.Status.ToCssClass()">@Model.Status.ToDisplay()</span>
+                    <dl class="row small mt-3 mb-0">
+                        <dt class="col-5 fw-normal text-muted">Payment</dt>
+                        <dd class="col-7">@Model.PaymentMethod</dd>
+                        <dt class="col-5 fw-normal text-muted">Collection</dt>
+                        <dd class="col-7">@Model.CollectionStatus</dd>
+                        @if (!string.IsNullOrWhiteSpace(Model.TrackingNumber))
+                        {
+                            <dt class="col-5 fw-normal text-muted">Tracking</dt>
+                            <dd class="col-7"><code class="small">@Model.TrackingNumber</code></dd>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.CouponCode))
+                        {
+                            <dt class="col-5 fw-normal text-muted">Coupon</dt>
+                            <dd class="col-7">@Model.CouponCode</dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+
+            @{
+                var shipments = ViewData["Shipments"] as IReadOnlyList<WebDS_Test.Domain.OrderShipment>
+                                ?? Array.Empty<WebDS_Test.Domain.OrderShipment>();
+                var carrierName = ViewData["CarrierName"] as string ?? "the carrier";
+                var canDispatch = Model.Status is OrderStatus.Pending or OrderStatus.Paid;
+            }
+            <div class="card mb-3">
+                <div class="card-header bg-white fw-semibold">Fulfilment</div>
+                <div class="card-body small">
+                    @if (!string.IsNullOrWhiteSpace(Model.CarrierError))
+                    {
+                        <div class="alert alert-danger py-2 small mb-2">
+                            <strong>Carrier error:</strong> @Model.CarrierError
+                        </div>
+                    }
+
+                    @if (shipments.Count == 0 && canDispatch)
+                    {
+                        <p class="text-muted mb-2">
+                            Book a consignment with @carrierName: the courier collects from your shop
+                            address, a tracking number and printable label are created, and the buyer
+                            is notified.
+                        </p>
+                        <form asp-area="Vendor" asp-controller="Orders" asp-action="Ship" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <button type="submit" class="btn btn-sm btn-primary w-100">Book shipment &amp; ship order</button>
+                        </form>
+                    }
+                    else if (shipments.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No carrier consignment has been booked for this order.</p>
+                    }
+
+                    @foreach (var shipment in shipments)
+                    {
+                        <div class="border rounded p-2 mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge @shipment.Status.ToCssClass()">@shipment.Status.ToDisplay()</span>
+                                <span class="text-muted">@shipment.Carrier</span>
+                            </div>
+                            <dl class="row small mt-2 mb-0">
+                                @if (!string.IsNullOrWhiteSpace(shipment.TrackingNumber))
+                                {
+                                    <dt class="col-5 fw-normal text-muted">Tracking</dt>
+                                    <dd class="col-7"><code class="small">@shipment.TrackingNumber</code></dd>
+                                }
+                                @if (shipment.CodAmount > 0m)
+                                {
+                                    <dt class="col-5 fw-normal text-muted">COD to collect</dt>
+                                    <dd class="col-7">@shipment.CodAmount.ToString("N2")</dd>
+                                }
+                                @if (shipment.WeightGrams > 0)
+                                {
+                                    <dt class="col-5 fw-normal text-muted">Weight</dt>
+                                    <dd class="col-7">@shipment.WeightGrams g</dd>
+                                }
+                            </dl>
+
+                            @if (!string.IsNullOrWhiteSpace(shipment.LastError))
+                            {
+                                <div class="text-danger mt-2">@shipment.LastError</div>
+                            }
+
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                @if (!string.IsNullOrWhiteSpace(shipment.LabelUrl))
+                                {
+                                    <a class="btn btn-sm btn-outline-secondary" href="@shipment.LabelUrl" target="_blank" rel="noopener">Print label</a>
+                                }
+                                @if (shipment.IsOpen)
+                                {
+                                    <form asp-area="Vendor" asp-controller="Orders" asp-action="RefreshTracking" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Refresh tracking</button>
+                                    </form>
+                                }
+                            </div>
+
+                            @if (shipment.Events.Count > 0)
+                            {
+                                <ul class="list-unstyled small mt-2 mb-0">
+                                    @foreach (var e in shipment.Events.OrderByDescending(e => e.OccurredUtc))
+                                    {
+                                        <li class="mb-1">
+                                            <span class="text-muted">@e.OccurredUtc.ToString("d MMM HH:mm")</span>
+                                            — <span class="fw-semibold">@e.Status.ToDisplay()</span>
+                                            @if (!string.IsNullOrWhiteSpace(e.Location))
+                                            {
+                                                <span>· @e.Location</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(e.Description))
+                                            {
+                                                <div class="text-muted">@e.Description@(e.FromCarrier ? "" : " (recorded manually)")</div>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-white fw-semibold">Returns</div>
+                <div class="card-body small">
+                    @{
+                        var orderReturns = ViewData["Returns"] as IReadOnlyList<WebDS_Test.Domain.ReturnRequest>;
+                    }
+                    @if (orderReturns is { Count: > 0 })
+                    {
+                        @foreach (var returnRequest in orderReturns)
+                        {
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 py-1">
+                                <div>
+                                    <a asp-area="Vendor" asp-controller="Returns" asp-action="Details" asp-route-id="@returnRequest.Id">
+                                        @returnRequest.Reference
+                                    </a>
+                                    <div class="text-muted">@returnRequest.Lines.Sum(l => l.Quantity) unit(s)</div>
+                                    @if (returnRequest.Status == ReturnStatus.Refunded)
+                                    {
+                                        <div class="text-muted">Refunded @returnRequest.RefundAmount.ToString("N2")</div>
+                                    }
+                                </div>
+                                <span class="badge @returnRequest.Status.ToCssClass()">@returnRequest.Status.ToDisplay()</span>
+                            </div>
+                        }
+                    }
+                    else if (Model.Status is OrderStatus.Paid or OrderStatus.Shipped or OrderStatus.Delivered)
+                    {
+                        <p class="text-muted mb-0">No return request yet for this order.</p>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">Returns open once the order is paid.</p>
+                    }
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-white fw-semibold">Customer</div>
+                <div class="card-body small">
+                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.CustomerName) ? "—" : Model.CustomerName)</div>
+                    <div class="text-muted">@Model.Email</div>
+                    @if (!string.IsNullOrWhiteSpace(Model.Phone))
+                    {
+                        <div class="text-muted">@Model.Phone</div>
+                    }
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header bg-white fw-semibold">Delivery</div>
+                <div class="card-body small">
+                    <div class="fw-semibold">@Model.ShippingName</div>
+                    <div>@Model.ShippingLine1</div>
+                    @if (!string.IsNullOrWhiteSpace(Model.ShippingLine2))
+                    {
+                        <div>@Model.ShippingLine2</div>
+                    }
+                    <div>@Model.ShippingCity @Model.ShippingPostalCode</div>
+                    <div>@Model.ShippingCountry</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-white fw-semibold">Totals</div>
+                <div class="card-body">
+                    <div class="summary-row"><span>Subtotal</span><span>@Model.Subtotal.ToString("N2")</span></div>
+                    @if (Model.DiscountTotal > 0)
+                    {
+                        <div class="summary-row"><span>Discount</span><span>−@Model.DiscountTotal.ToString("N2")</span></div>
+                    }
+                    <div class="summary-row"><span>Shipping</span><span>@Model.ShippingTotal.ToString("N2")</span></div>
+                    <div class="summary-row"><span>Tax</span><span>@Model.TaxTotal.ToString("N2")</span></div>
+                    <div class="summary-row total"><span>Total</span><span>@Model.GrandTotal.ToString("N2")</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

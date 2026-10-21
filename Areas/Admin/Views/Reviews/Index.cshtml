@@ -1,0 +1,199 @@
+@model AdminReviewListViewModel
+@{
+    string Plural(int count, string singular) => count == 1 ? $"{count} {singular}" : $"{count} {singular}s";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Reviews</h2>
+        <p class="text-muted small mb-0">
+            @Plural(Model.Reviews.TotalCount, "review") match the current filter.
+            @if (Model.CountFor(ReviewStatus.Pending) > 0)
+            {
+                <span class="text-warning-emphasis">@Plural(Model.CountFor(ReviewStatus.Pending), "review") awaiting moderation.</span>
+            }
+        </p>
+    </div>
+
+    <form method="get" asp-action="Index" class="d-flex align-items-end gap-2">
+        <input type="hidden" name="status" value="@Model.Status" />
+        <div>
+            <label class="form-label small text-muted mb-1" for="ratingFilter">Rating</label>
+            <select class="form-select form-select-sm" id="ratingFilter" name="rating" onchange="this.form.submit()">
+                <option value="">All ratings</option>
+                @for (var star = 5; star >= 1; star--)
+                {
+                    <option value="@star" selected="@(Model.Rating == star)">@star star@(star == 1 ? string.Empty : "s")</option>
+                }
+            </select>
+        </div>
+        <noscript><button class="btn btn-sm btn-primary" type="submit">Apply</button></noscript>
+    </form>
+</div>
+
+@* Moderation-state chips. The counts come from a single grouped query. *@
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-sm @(Model.Status is null ? "btn-primary" : "btn-outline-secondary")"
+       asp-action="Index" asp-route-rating="@Model.Rating">
+        All <span class="badge text-bg-light ms-1">@Model.TotalCount</span>
+    </a>
+    @foreach (var state in new[] { ReviewStatus.Pending, ReviewStatus.Published, ReviewStatus.Rejected })
+    {
+        <a class="btn btn-sm @(Model.Status == state ? "btn-primary" : "btn-outline-secondary")"
+           asp-action="Index" asp-route-status="@state" asp-route-rating="@Model.Rating">
+            @state.ToDisplay() <span class="badge text-bg-light ms-1">@Model.CountFor(state)</span>
+        </a>
+    }
+</div>
+
+@if (Model.Reviews.Items.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center text-muted py-5">
+            No reviews match this filter.
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col" style="width:22%">Product</th>
+                        <th scope="col" style="width:8%">Rating</th>
+                        <th scope="col">Review</th>
+                        <th scope="col" style="width:12%">Reviewer</th>
+                        <th scope="col" style="width:9%">Status</th>
+                        <th scope="col" style="width:11%">Written</th>
+                        <th scope="col" style="width:16%"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Reviews.Items)
+                    {
+                        <tr>
+                            <td>
+                                <a class="text-decoration-none fw-semibold"
+                                   asp-area="" asp-controller="Products" asp-action="Details" asp-route-slug="@row.ProductSlug"
+                                   target="_blank" rel="noopener">
+                                    @row.ProductName
+                                </a>
+                                @if (!string.IsNullOrWhiteSpace(row.ShopName))
+                                {
+                                    <div class="small text-muted">@row.ShopName</div>
+                                }
+                            </td>
+                            <td>
+                                <partial name="_Stars" model="@(new StarRating(row.Rating, 1))" />
+                                <div class="small text-muted">@row.Rating / 5</div>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(row.Title))
+                                {
+                                    <div class="fw-semibold">@row.Title</div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(row.Body))
+                                {
+                                    <div class="small text-muted admin-review-body">@row.Body</div>
+                                }
+                                <div class="mt-1 d-flex gap-2">
+                                    @if (row.IsVerifiedPurchase)
+                                    {
+                                        <span class="badge text-bg-success">Verified</span>
+                                    }
+                                    @if (row.HasVendorReply)
+                                    {
+                                        <span class="badge text-bg-info">Seller replied</span>
+                                    }
+                                </div>
+                            </td>
+                            <td class="small">@row.ReviewerName</td>
+                            <td><span class="badge @row.Status.ToCssClass()">@row.Status.ToDisplay()</span></td>
+                            <td class="small text-muted">@row.CreatedUtc.ToString("d MMM yyyy")</td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1 justify-content-end">
+                                    @if (row.Status != ReviewStatus.Published)
+                                    {
+                                        <form method="post" asp-action="SetStatus">
+                                            <input type="hidden" name="id" value="@row.Id" />
+                                            <input type="hidden" name="status" value="@ReviewStatus.Published" />
+                                            <input type="hidden" name="filter" value="@Model.Status" />
+                                            <input type="hidden" name="rating" value="@Model.Rating" />
+                                            <input type="hidden" name="page" value="@Model.Reviews.Page" />
+                                            <button class="btn btn-sm btn-success" type="submit">Publish</button>
+                                        </form>
+                                    }
+                                    @if (row.Status != ReviewStatus.Pending)
+                                    {
+                                        <form method="post" asp-action="SetStatus">
+                                            <input type="hidden" name="id" value="@row.Id" />
+                                            <input type="hidden" name="status" value="@ReviewStatus.Pending" />
+                                            <input type="hidden" name="filter" value="@Model.Status" />
+                                            <input type="hidden" name="rating" value="@Model.Rating" />
+                                            <input type="hidden" name="page" value="@Model.Reviews.Page" />
+                                            <button class="btn btn-sm btn-outline-secondary" type="submit">Queue</button>
+                                        </form>
+                                    }
+                                    @if (row.Status != ReviewStatus.Rejected)
+                                    {
+                                        <form method="post" asp-action="SetStatus">
+                                            <input type="hidden" name="id" value="@row.Id" />
+                                            <input type="hidden" name="status" value="@ReviewStatus.Rejected" />
+                                            <input type="hidden" name="filter" value="@Model.Status" />
+                                            <input type="hidden" name="rating" value="@Model.Rating" />
+                                            <input type="hidden" name="page" value="@Model.Reviews.Page" />
+                                            <button class="btn btn-sm btn-outline-warning" type="submit">Hide</button>
+                                        </form>
+                                    }
+                                    <form method="post" asp-action="Delete"
+                                          onsubmit="return confirm('Delete this review permanently?');">
+                                        <input type="hidden" name="id" value="@row.Id" />
+                                        <input type="hidden" name="filter" value="@Model.Status" />
+                                        <input type="hidden" name="rating" value="@Model.Rating" />
+                                        <input type="hidden" name="page" value="@Model.Reviews.Page" />
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (Model.Reviews.TotalPages > 1)
+    {
+        <nav aria-label="Review moderation pages" class="mt-3">
+            <ul class="pagination justify-content-center flex-wrap mb-0">
+                <li class="page-item @(Model.Reviews.HasPrevious ? string.Empty : "disabled")">
+                    @if (Model.Reviews.HasPrevious)
+                    {
+                        <a class="page-link" asp-action="Index" asp-route-status="@Model.Status"
+                           asp-route-rating="@Model.Rating" asp-route-page="@(Model.Reviews.Page - 1)">Previous</a>
+                    }
+                    else
+                    {
+                        <span class="page-link">Previous</span>
+                    }
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">Page @Model.Reviews.Page of @Model.Reviews.TotalPages</span>
+                </li>
+                <li class="page-item @(Model.Reviews.HasNext ? string.Empty : "disabled")">
+                    @if (Model.Reviews.HasNext)
+                    {
+                        <a class="page-link" asp-action="Index" asp-route-status="@Model.Status"
+                           asp-route-rating="@Model.Rating" asp-route-page="@(Model.Reviews.Page + 1)">Next</a>
+                    }
+                    else
+                    {
+                        <span class="page-link">Next</span>
+                    }
+                </li>
+            </ul>
+        </nav>
+    }
+}

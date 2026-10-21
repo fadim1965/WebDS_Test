@@ -1,0 +1,109 @@
+@model IReadOnlyList<WebDS_Test.Domain.Coupon>
+@{
+    ViewData["Title"] = "Coupons";
+    var currency = ViewData["CurrencySymbol"] as string ?? "$";
+
+    string Discount(Coupon c) => c.Type == DiscountType.Percentage
+        ? $"{c.Value:0.##}%"
+        : $"{currency}{c.Value:F2}";
+
+    string Window(Coupon c)
+    {
+        if (c.StartsUtc is null && c.ExpiresUtc is null) return "Always";
+        var from = c.StartsUtc?.ToString("d MMM yyyy") ?? "now";
+        var to = c.ExpiresUtc?.ToString("d MMM yyyy") ?? "open";
+        return $"{from} → {to}";
+    }
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Coupons</h2>
+        <p class="text-muted small mb-0">
+            Discount codes shoppers can apply in the cart. Every rule is re-checked when the order is
+            placed, so an expired or exhausted code cannot be redeemed late.
+        </p>
+    </div>
+    <a class="btn btn-primary" asp-area="Admin" asp-controller="Coupons" asp-action="Create">New coupon</a>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center text-muted py-5">
+            No coupons yet. <a asp-area="Admin" asp-controller="Coupons" asp-action="Create">Create the first one</a>.
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">Code</th>
+                        <th scope="col">Discount</th>
+                        <th scope="col" class="text-end">Min. spend</th>
+                        <th scope="col">Limits</th>
+                        <th scope="col">Validity</th>
+                        <th scope="col" class="text-end">Uses</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var coupon in Model)
+                    {
+                        var address = Url.Action("Edit", "Coupons", new { area = "Admin", id = coupon.Id })!;
+                        <tr>
+                            <td>
+                                <a class="text-decoration-none fw-semibold" href="@address">@coupon.Code</a>
+                                @if (!string.IsNullOrWhiteSpace(coupon.Description))
+                                {
+                                    <div class="small text-muted text-truncate-2">@coupon.Description</div>
+                                }
+                            </td>
+                            <td>@Discount(coupon)</td>
+                            <td class="text-end">@(coupon.MinSubtotal > 0m ? $"{currency}{coupon.MinSubtotal:F2}" : "—")</td>
+                            <td class="small text-muted">
+                                Total: @(coupon.MaxUses?.ToString() ?? "unlimited")<br />
+                                Per shopper: @(coupon.MaxUsesPerUser?.ToString() ?? "unlimited")
+                            </td>
+                            <td class="small text-muted">@Window(coupon)</td>
+                            <td class="text-end">@coupon.UsedCount</td>
+                            <td>
+                                @if (!coupon.IsActive)
+                                {
+                                    <span class="badge text-bg-secondary">Inactive</span>
+                                }
+                                else if (!coupon.IsWithinWindow(DateTime.UtcNow))
+                                {
+                                    <span class="badge text-bg-warning">Out of date</span>
+                                }
+                                else if (!coupon.HasUsesRemaining)
+                                {
+                                    <span class="badge text-bg-warning">Exhausted</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-success">Active</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap justify-content-end gap-1">
+                                    <a class="btn btn-sm btn-outline-secondary" href="@address">Edit</a>
+                                    <form method="post" asp-area="Admin" asp-controller="Coupons" asp-action="Delete"
+                                          asp-route-id="@coupon.Id"
+                                          onsubmit="return confirm('Delete this coupon? A coupon that has already been redeemed is deactivated instead.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

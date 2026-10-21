@@ -1,0 +1,108 @@
+@model WebDS_Test.Areas.Admin.Models.AdminPayoutIndexViewModel
+@{
+    ViewData["Title"] = "Payouts";
+}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h4 mb-1">Vendor payouts</h1>
+            <p class="text-muted mb-0">
+                Settle what each shop is owed. A payout marks every outstanding ledger entry as paid
+                and keeps a statement you can download.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-format="csv">Export CSV</a>
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-format="excel">Export Excel</a>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">Outstanding balances</div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Shop</th>
+                        <th>Status</th>
+                        <th class="text-end">Entries</th>
+                        <th class="text-end">Gross</th>
+                        <th class="text-end">Commission</th>
+                        <th class="text-end">Owed</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Balances.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-muted">No shops have registered yet.</td></tr>
+                }
+                @foreach (var balance in Model.Balances)
+                {
+                    <tr>
+                        <td>@balance.ShopName</td>
+                        <td><span class="badge @balance.Status.ToCssClass()">@balance.Status.ToDisplay()</span></td>
+                        <td class="text-end">@balance.EntryCount</td>
+                        <td class="text-end">@Model.Currency@balance.Gross.ToString("N2")</td>
+                        <td class="text-end">@Model.Currency@balance.Commission.ToString("N2")</td>
+                        <td class="text-end fw-semibold">@Model.Currency@balance.Net.ToString("N2")</td>
+                        <td class="text-end">
+                            @if (balance.IsPayable)
+                            {
+                                <form asp-action="Create" method="post" class="d-flex flex-wrap justify-content-end gap-2">
+                                    <input type="hidden" name="shopId" value="@balance.ShopId" />
+                                    <input class="form-control form-control-sm" name="method" value="Bank transfer" style="width:11rem" aria-label="Payout method" />
+                                    <input class="form-control form-control-sm" name="note" placeholder="Note (optional)" />
+                                    <button class="btn btn-sm btn-success" type="submit">Pay out</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Nothing due</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header">Settlement history</div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Reference</th><th>Shop</th><th>Paid (UTC)</th><th>Status</th><th class="text-end">Entries</th>
+                        <th class="text-end">Gross</th><th class="text-end">Commission</th>
+                        <th class="text-end">Net</th><th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.History.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-muted">Nothing has been paid out yet.</td></tr>
+                }
+                @foreach (var payout in Model.History)
+                {
+                    <tr>
+                        <td><a asp-action="Details" asp-route-id="@payout.Id">@payout.Reference</a></td>
+                        <td>@(payout.Shop?.Name ?? "(shop removed)")</td>
+                        <td>@payout.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td><span class="badge @payout.Status.ToCssClass()">@payout.Status.ToDisplay()</span></td>
+                        <td class="text-end">@payout.EntryCount</td>
+                        <td class="text-end">@Model.Currency@payout.GrossAmount.ToString("N2")</td>
+                        <td class="text-end">@Model.Currency@payout.CommissionAmount.ToString("N2")</td>
+                        <td class="text-end">@Model.Currency@payout.NetAmount.ToString("N2")</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-secondary"
+                               asp-action="Statement" asp-route-id="@payout.Id" asp-route-format="csv">CSV</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

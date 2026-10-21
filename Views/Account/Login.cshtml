@@ -1,0 +1,69 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Sign in";
+
+    var summaryClass = ViewData.ModelState.IsValid ? "text-danger small" : "alert alert-danger";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-5">
+        <div class="card">
+            <div class="card-body p-4">
+                <h1 class="h3 mb-3">Sign in</h1>
+
+                <div class="alert alert-info" role="alert">
+                    <h2 class="h6 alert-heading">Seeded demo accounts</h2>
+                    <ul class="mb-0 small">
+                        <li>
+                            Administrator — <code>admin&#64;libanpost.example</code> / <code>Admin#12345</code>
+                        </li>
+                        <li>
+                            Customer — <code>customer&#64;libanpost.example</code> / <code>Customer#123</code>
+                        </li>
+                    </ul>
+                </div>
+
+                <form method="post" asp-controller="Account" asp-action="Login">
+                    <input type="hidden" asp-for="ReturnUrl" />
+
+                    <div asp-validation-summary="ModelOnly" class="@summaryClass" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Email"></label>
+                        <input class="form-control" asp-for="Email" type="email" autocomplete="email" autofocus />
+                        <span class="text-danger small" asp-validation-for="Email"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Password"></label>
+                        <input class="form-control" asp-for="Password" type="password" autocomplete="current-password" />
+                        <span class="text-danger small" asp-validation-for="Password"></span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" asp-for="RememberMe" />
+                            <label class="form-check-label" asp-for="RememberMe">Keep me signed in on this device</label>
+                        </div>
+                        <a class="small" asp-controller="Account" asp-action="ForgotPassword">Forgot password?</a>
+                    </div>
+
+                    <div class="d-grid">
+                        <button class="btn btn-primary btn-lg" type="submit">Sign in</button>
+                    </div>
+                </form>
+
+                <hr />
+
+                <p class="mb-0 small">
+                    New to the store? <a asp-controller="Account" asp-action="Register">Create an account</a> to
+                    keep your cart, wishlist and order history in one place.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

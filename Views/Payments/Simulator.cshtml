@@ -1,0 +1,46 @@
+@model SimulatorPaymentViewModel
+@{
+    ViewData["Title"] = "Secure payment";
+    var order = Model.Order;
+}
+
+<h1 class="h3 mb-3">Secure payment</h1>
+
+<div class="alert alert-secondary small">
+    This is the bundled payment simulator, standing in for a provider's hosted page. No card is
+    charged and no money moves — it exercises the same redirect-and-webhook contract a real provider
+    uses.
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><h2 class="h6 mb-0">Order @order.OrderNumber</h2></div>
+            <div class="card-body">
+                <dl class="row mb-3">
+                    <dt class="col-6 fw-normal text-muted">Amount due</dt>
+                    <dd class="col-6 text-end fw-bold">@Model.CurrencySymbol@order.GrandTotal.ToString("N2")</dd>
+                    <dt class="col-6 fw-normal text-muted">Merchant</dt>
+                    <dd class="col-6 text-end">LibanPost eShop</dd>
+                </dl>
+
+                @if (order.Status != OrderStatus.Pending)
+                {
+                    <div class="alert alert-success mb-3">This order is already @order.Status.ToDisplay().</div>
+                }
+
+                <form asp-action="SimulatorComplete" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="reference" value="@order.OrderNumber" />
+                    <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                    <button type="submit" name="outcome" value="succeed" class="btn btn-success w-100 mb-2">
+                        Pay @Model.CurrencySymbol@order.GrandTotal.ToString("N2")
+                    </button>
+                    <button type="submit" name="outcome" value="decline" class="btn btn-outline-danger w-100">
+                        Decline payment
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

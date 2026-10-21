@@ -1,0 +1,18 @@
+@model WebDS_Test.Services.StarRating
+@using System.Globalization
+@{
+    /*
+       A five-star strip. Two identical rows of stars are stacked: a grey base and a gold copy
+       clipped to the rating's percentage, which renders fractional stars (4.3, 3.7 …) without
+       images or JavaScript. Callers size it with star-rating-sm / star-rating-lg.
+    */
+    var percent = Model.Count == 0 ? 0d : Math.Clamp(Model.Value / 5d * 100d, 0d, 100d);
+    var label = Model.Count == 0
+        ? "No ratings yet"
+        : string.Format(CultureInfo.InvariantCulture,
+            "{0:0.0} out of 5 stars from {1} rating{2}", Model.Value, Model.Count, Model.Count == 1 ? string.Empty : "s");
+}
+<span class="star-rating" role="img" aria-label="@label" title="@label">
+    <span class="star-rating-base" aria-hidden="true">★★★★★</span>
+    <span class="star-rating-fill" style="width:@percent.ToString("0.##", CultureInfo.InvariantCulture)%" aria-hidden="true">★★★★★</span>
+</span>

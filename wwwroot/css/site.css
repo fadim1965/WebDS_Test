@@ -1,0 +1,55 @@
+html {
+    font-size: 14px;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+html {
+    position: relative;
+    min-height: 100%;
+}
+
+/* Bootstrap's default focus ring, kept but aligned with the storefront brand colour. */
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem #fff, 0 0 0 0.25rem #6366f1;
+}
+
+.btn-primary {
+    --bs-btn-bg: #4338ca;
+    --bs-btn-border-color: #4338ca;
+    --bs-btn-hover-bg: #3730a3;
+    --bs-btn-hover-border-color: #3730a3;
+    --bs-btn-active-bg: #312e81;
+    --bs-btn-active-border-color: #312e81;
+    --bs-btn-disabled-bg: #a5b4fc;
+    --bs-btn-disabled-border-color: #a5b4fc;
+}
+
+.btn-outline-primary {
+    --bs-btn-color: #4338ca;
+    --bs-btn-border-color: #4338ca;
+    --bs-btn-hover-bg: #4338ca;
+    --bs-btn-hover-border-color: #4338ca;
+    --bs-btn-active-bg: #312e81;
+    --bs-btn-active-border-color: #312e81;
+}
+
+.text-primary {
+    color: #4338ca !important;
+}
+
+a {
+    color: #4338ca;
+}
+
+a:hover {
+    color: #312e81;
+}

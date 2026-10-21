@@ -1,0 +1,41 @@
+@model ErrorViewModel
+@using Microsoft.Extensions.Options
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    ViewData["Title"] = "Something went wrong";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-9 col-lg-7">
+        <div class="card">
+            <div class="card-body text-center p-5">
+                <div class="display-5 mb-2" aria-hidden="true">Oops</div>
+                <h1 class="h3 mb-2">Something went wrong on our side</h1>
+                <p class="text-muted mb-4">
+                    The page could not be completed. Nothing you did caused this, and your cart has not been
+                    changed. Trying again in a moment usually works.
+                </p>
+
+                @if (Model.ShowRequestId)
+                {
+                    <p class="small text-muted mb-4">
+                        If you contact support, quote this request ID:
+                        <br />
+                        <code>@Model.RequestId</code>
+                    </p>
+                }
+
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Back to the store</a>
+                    <a class="btn btn-outline-secondary" asp-controller="Catalog" asp-action="Index">Browse products</a>
+                    <a class="btn btn-outline-secondary" asp-controller="Cart" asp-action="Index">View your cart</a>
+                </div>
+
+                <p class="text-muted small mb-0 mt-4">
+                    Still stuck? Contact
+                    <a href="mailto:@StoreOptions.Value.SupportEmail">@StoreOptions.Value.SupportEmail</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,208 @@
+@using Microsoft.Extensions.Options
+@model InventoryViewModel
+@inject IOptions<StoreSettings> StoreOptions
+@{
+    var currency = StoreOptions.Value.CurrencySymbol;
+
+    // InventoryViewModel carries no filter state, so the current filter is read back off the query string.
+    var search = Context.Request.Query["q"].ToString();
+    var filter = Context.Request.Query["filter"].ToString();
+    var returnUrl = Context.Request.Path.ToString() + Context.Request.QueryString.ToString();
+
+    var reasons = Html.GetEnumSelectList<StockMovementReason>().ToList();
+
+    string Money(decimal value) => currency + value.ToString("N2");
+    string Plural(int count, string singular) => count == 1 ? $"{count} {singular}" : $"{count} {singular}s";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Inventory</h2>
+        <p class="text-muted small mb-0">
+            @Plural(Model.Variants.Count, "variant") listed. Every manual change is written to the movement ledger below.
+        </p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Products" asp-action="Index">Manage products</a>
+</div>
+
+@* ---- Filters. A GET form so the view can be bookmarked. ---- *@
+<form method="get" asp-area="Admin" asp-controller="Inventory" asp-action="Index" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-5">
+            <label class="form-label" for="q">Search</label>
+            <input class="form-control" type="search" id="q" name="q" value="@search" placeholder="SKU or product name" />
+        </div>
+        <div class="col-12 col-md-4">
+            <label class="form-label" for="filter">Show</label>
+            <select class="form-select" id="filter" name="filter">
+                <option value="" selected="@(filter.Length == 0)">All variants</option>
+                <option value="out" selected="@(filter == "out")">Out of stock</option>
+                <option value="low" selected="@(filter == "low")">Low stock</option>
+                <option value="inactive" selected="@(filter == "inactive")">Inactive</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1">Filter</button>
+            <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Inventory" asp-action="Index">Reset</a>
+        </div>
+    </div>
+</form>
+
+<div class="card mb-4">
+    <div class="card-header bg-white fw-semibold">Stock on hand</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle table-sticky-head mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Product</th>
+                    <th scope="col">Variant</th>
+                    <th scope="col">SKU</th>
+                    <th scope="col" class="text-end">Price</th>
+                    <th scope="col" class="text-end">Stock</th>
+                    <th scope="col" class="text-center">Active</th>
+                    <th scope="col">Adjust stock</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var variant in Model.Variants)
+                {
+                    var categoryName = variant.Product?.Category?.Name;
+
+                    <tr>
+                        <td>
+                            <a class="text-decoration-none"
+                               asp-area="Admin" asp-controller="Products" asp-action="Edit" asp-route-id="@variant.ProductId">
+                                @(variant.Product?.Name ?? "—")
+                            </a>
+                            @if (!string.IsNullOrWhiteSpace(categoryName))
+                            {
+                                <div class="small text-muted">@categoryName</div>
+                            }
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(variant.Name) ? "—" : variant.Name)</td>
+                        <td><code class="small">@variant.Sku</code></td>
+                        <td class="text-end text-nowrap">@Money(variant.Price)</td>
+                        <td class="text-end">
+                            @if (variant.StockQuantity <= 0)
+                            {
+                                <span class="badge text-bg-danger">0</span>
+                            }
+                            else if (variant.IsLowStock)
+                            {
+                                <span class="badge text-bg-warning">@variant.StockQuantity</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-success">@variant.StockQuantity</span>
+                            }
+                            <div class="small text-muted">low at @variant.LowStockThreshold</div>
+                        </td>
+                        <td class="text-center">
+                            @if (variant.IsActive)
+                            {
+                                <span class="badge text-bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Inactive</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column gap-1">
+                                <form method="post" asp-area="Admin" asp-controller="Inventory" asp-action="Adjust"
+                                      class="d-flex flex-wrap align-items-center gap-1">
+                                    <input type="hidden" name="variantId" value="@variant.Id" />
+                                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+                                    <input type="number" step="1" required class="form-control form-control-sm" name="delta"
+                                           style="width:5rem;" placeholder="±" aria-label="Stock change for @variant.Sku" />
+
+                                    <select class="form-select form-select-sm" name="reason" style="width:9rem;"
+                                            aria-label="Reason for the change to @variant.Sku">
+                                        @foreach (var reason in reasons)
+                                        {
+                                            <option value="@reason.Value" selected="@(reason.Value == nameof(StockMovementReason.Adjustment))">@reason.Text</option>
+                                        }
+                                    </select>
+
+                                    <input type="text" class="form-control form-control-sm" name="note"
+                                           style="width:9rem;" placeholder="Note (optional)" aria-label="Note for @variant.Sku" />
+
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Adjust</button>
+                                </form>
+
+                                <form method="post" asp-area="Admin" asp-controller="Inventory" asp-action="SetStock"
+                                      class="d-flex flex-wrap align-items-center gap-1">
+                                    <input type="hidden" name="variantId" value="@variant.Id" />
+
+                                    <input type="number" step="1" min="0" required class="form-control form-control-sm" name="newQuantity"
+                                           style="width:5rem;" placeholder="Set to" aria-label="New stock quantity for @variant.Sku" />
+
+                                    <input type="text" class="form-control form-control-sm" name="note"
+                                           style="width:9rem;" placeholder="Note (optional)" aria-label="Note for @variant.Sku" />
+
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Set to</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+
+                @if (Model.Variants.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No variants match this filter.
+                            <a asp-area="Admin" asp-controller="Inventory" asp-action="Index">Show everything</a>.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-white fw-semibold">Recent stock movements</div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle table-sticky-head mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">When</th>
+                    <th scope="col">Product / SKU</th>
+                    <th scope="col" class="text-end">Change</th>
+                    <th scope="col" class="text-end">Stock after</th>
+                    <th scope="col">Reason</th>
+                    <th scope="col">Note</th>
+                    <th scope="col">By</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var movement in Model.RecentMovements)
+                {
+                    <tr>
+                        <td class="small text-muted text-nowrap">@movement.CreatedUtc.ToString("d MMM yyyy HH:mm")</td>
+                        <td>
+                            @(movement.ProductVariant?.Product?.Name ?? "—")
+                            <div class="small text-muted"><code>@(movement.ProductVariant?.Sku ?? "—")</code></div>
+                        </td>
+                        <td class="text-end fw-semibold @(movement.QuantityDelta > 0 ? "text-success" : movement.QuantityDelta < 0 ? "text-danger" : "text-muted")">
+                            @(movement.QuantityDelta > 0 ? "+" : string.Empty)@movement.QuantityDelta
+                        </td>
+                        <td class="text-end">@movement.StockAfter</td>
+                        <td>@movement.Reason</td>
+                        <td class="small text-muted">@(string.IsNullOrWhiteSpace(movement.Note) ? "—" : movement.Note)</td>
+                        <td class="small text-muted">@(string.IsNullOrWhiteSpace(movement.CreatedBy) ? "—" : movement.CreatedBy)</td>
+                    </tr>
+                }
+
+                @if (Model.RecentMovements.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">No stock movements have been recorded yet.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

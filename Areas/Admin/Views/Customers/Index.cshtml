@@ -1,0 +1,108 @@
+@model AdminCustomerListViewModel
+@{
+    string Initial(string? name) => string.IsNullOrWhiteSpace(name) ? "?" : name.Trim()[..1].ToUpperInvariant();
+    string Plural(int count, string singular) => count == 1 ? $"{count} {singular}" : $"{count} {singular}s";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Customers</h2>
+        <p class="text-muted small mb-0">@Plural(Model.Customers.Count, "account") listed.</p>
+    </div>
+    <div class="btn-group btn-group-sm" role="group" aria-label="Export customers">
+        <a class="btn btn-outline-secondary"
+           asp-area="Admin" asp-controller="Customers" asp-action="Export"
+           asp-route-q="@Model.Search" asp-route-format="csv">Export CSV</a>
+        <a class="btn btn-outline-secondary"
+           asp-area="Admin" asp-controller="Customers" asp-action="Export"
+           asp-route-q="@Model.Search" asp-route-format="excel">Export Excel</a>
+    </div>
+</div>
+
+<form method="get" asp-area="Admin" asp-controller="Customers" asp-action="Index" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-6">
+            <label class="form-label" for="q">Search</label>
+            <input class="form-control" type="search" id="q" name="q" value="@Model.Search"
+                   placeholder="Name, email or phone" />
+        </div>
+        <div class="col-12 col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1">Search</button>
+            <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Customers" asp-action="Index">Reset</a>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle table-sticky-head mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Phone</th>
+                    <th scope="col">Roles</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Joined</th>
+                    <th scope="col">Last sign-in</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var customer in Model.Customers)
+                {
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="avatar-circle" aria-hidden="true">@Initial(customer.DisplayName)</span>
+                                <a class="fw-semibold text-decoration-none"
+                                   asp-area="Admin" asp-controller="Customers" asp-action="Details" asp-route-id="@customer.Id">
+                                    @(string.IsNullOrWhiteSpace(customer.DisplayName) ? customer.Email : customer.DisplayName)
+                                </a>
+                            </div>
+                        </td>
+                        <td class="small">
+                            <a href="mailto:@customer.Email">@customer.Email</a>
+                        </td>
+                        <td class="small text-muted">@(string.IsNullOrWhiteSpace(customer.Phone) ? "—" : customer.Phone)</td>
+                        <td>
+                            @foreach (var role in customer.UserRoles.Select(r => r.RoleName))
+                            {
+                                <span class="badge text-bg-light border me-1">@role</span>
+                            }
+                            @if (customer.UserRoles.Count == 0)
+                            {
+                                <span class="text-muted small">none</span>
+                            }
+                        </td>
+                        <td>
+                            @if (customer.IsActive)
+                            {
+                                <span class="badge text-bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Inactive</span>
+                            }
+                            @if (customer.IsLockedOut)
+                            {
+                                <span class="badge text-bg-danger">Locked out</span>
+                            }
+                        </td>
+                        <td class="small text-muted text-nowrap">@customer.CreatedUtc.ToString("d MMM yyyy")</td>
+                        <td class="small text-muted text-nowrap">@(customer.LastLoginUtc?.ToString("d MMM yyyy") ?? "never")</td>
+                    </tr>
+                }
+
+                @if (Model.Customers.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No customers match this search.
+                            <a asp-area="Admin" asp-controller="Customers" asp-action="Index">Show everyone</a>.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

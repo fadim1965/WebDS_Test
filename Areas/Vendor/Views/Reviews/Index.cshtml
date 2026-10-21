@@ -1,0 +1,225 @@
+@model VendorReviewListViewModel
+@using Microsoft.Extensions.Options
+@inject IOptions<ReviewSettings> ReviewOptions
+@{
+    ViewData["Title"] = "Reviews";
+    var settings = ReviewOptions.Value;
+    var badge = Model.Rating.Badge(settings);
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Reviews</h1>
+            <p class="text-muted mb-0">What customers are saying about @Model.ShopName.</p>
+        </div>
+        <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Dashboard" asp-action="Index">
+            Back to dashboard
+        </a>
+    </div>
+
+    <div class="row g-3 mt-1">
+        @* ---------------------------------------------------- rating headline ---- *@
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-muted small">Shop rating</div>
+
+                    @if (Model.Rating.HasRatings)
+                    {
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="h3 mb-0">@Model.Rating.Average.ToString("0.0")</span>
+                            <partial name="_Stars" model="@(new StarRating(Model.Rating.Average, Model.Rating.Count))" />
+                        </div>
+                        <div class="small text-muted">@Model.Rating.Count review@(Model.Rating.Count == 1 ? string.Empty : "s")</div>
+
+                        @if (badge != SellerBadge.None)
+                        {
+                            <span class="badge @badge.ToCssClass() mt-2">@badge.ToDisplay()</span>
+                        }
+
+                        <div class="mt-2 small text-muted">
+                            @Model.Rating.Summary.PositivePercentage% rated 4 stars or higher
+                        </div>
+
+                        <div class="mt-3">
+                            @for (var star = 5; star >= 1; star--)
+                            {
+                                <div class="d-flex align-items-center gap-2 small">
+                                    <span class="text-nowrap" style="width:3rem">@star <span aria-hidden="true">★</span></span>
+                                    <span class="review-bar-track flex-grow-1">
+                                        <span class="review-bar-fill" style="width:@Model.Rating.Summary.PercentageForStar(star)%"></span>
+                                    </span>
+                                    <span class="text-muted" style="width:2.5rem;text-align:right">@Model.Rating.Summary.ForStar(star)</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted mt-2 mb-0">
+                            No reviews yet. Strong, well-answered reviews are what earn the marketplace badges.
+                        </p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* --------------------------------------------------------- review list ---- *@
+        <div class="col-lg-8">
+            @* Filter by star, and choose the order. Links keep the state in the URL. *@
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a class="btn btn-sm @(Model.Stars is null ? "btn-primary" : "btn-outline-secondary")"
+                   asp-area="Vendor" asp-controller="Reviews" asp-action="Index" asp-route-sort="@Model.Sort">All</a>
+                @for (var star = 5; star >= 1; star--)
+                {
+                    <a class="btn btn-sm @(Model.Stars == star ? "btn-primary" : "btn-outline-secondary")"
+                       asp-area="Vendor" asp-controller="Reviews" asp-action="Index"
+                       asp-route-stars="@star" asp-route-sort="@Model.Sort">
+                        @star <span aria-hidden="true">★</span>
+                    </a>
+                }
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                @foreach (var sortValue in Enum.GetValues<ReviewSort>())
+                {
+                    <a class="btn btn-sm @(Model.Sort == sortValue ? "btn-primary" : "btn-link text-decoration-none")"
+                       asp-area="Vendor" asp-controller="Reviews" asp-action="Index"
+                       asp-route-stars="@Model.Stars" asp-route-sort="@sortValue">@sortValue.ToDisplay()</a>
+                }
+            </div>
+
+            @if (Model.Reviews.Items.Count == 0)
+            {
+                <div class="card">
+                    <div class="card-body text-muted">
+                        @if (Model.Stars is not null)
+                        {
+                            <span>No @Model.Stars★ reviews. <a asp-area="Vendor" asp-controller="Reviews" asp-action="Index">Show all reviews</a>.</span>
+                        }
+                        else
+                        {
+                            <span>Your products have not been reviewed yet. When they are, they will appear here for you to reply to.</span>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                foreach (var review in Model.Reviews.Items)
+                {
+                    <article class="card mb-3" id="review-@review.Id">
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                                <div>
+                                    <a class="text-decoration-none fw-semibold"
+                                       asp-area="" asp-controller="Products" asp-action="Details"
+                                       asp-route-slug="@(review.Product?.Slug ?? string.Empty)"
+                                       target="_blank" rel="noopener">
+                                        @(review.Product?.Name ?? "(deleted product)")
+                                    </a>
+                                    <div class="small text-muted d-flex flex-wrap align-items-center gap-2">
+                                        <partial name="_Stars" model="@(new StarRating(review.Rating, 1))" />
+                                        <span>@review.ReviewerName</span>
+                                        <span>·</span>
+                                        <span>@review.CreatedUtc.ToString("d MMM yyyy")</span>
+                                        @if (review.IsVerifiedPurchase)
+                                        {
+                                            <span class="badge text-bg-success">Verified purchase</span>
+                                        }
+                                        @if (review.Status == ReviewStatus.Pending)
+                                        {
+                                            <span class="badge @review.Status.ToCssClass()">Awaiting moderation</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(review.Title))
+                            {
+                                <h3 class="h6 mt-2 mb-1">@review.Title</h3>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(review.Body))
+                            {
+                                <p class="mb-2 review-body">@review.Body</p>
+                            }
+
+                            @if (review.HasVendorReply)
+                            {
+                                <div class="review-reply">
+                                    <div class="fw-semibold small mb-1">Your reply</div>
+                                    <p class="small mb-0">@review.VendorReply</p>
+                                </div>
+                            }
+
+                            <details class="mt-2" open="@review.HasVendorReply">
+                                <summary class="small text-primary" style="cursor:pointer">
+                                    @(review.HasVendorReply ? "Edit your reply" : "Reply to this review")
+                                </summary>
+                                <form method="post" asp-area="Vendor" asp-controller="Reviews" asp-action="Reply" class="mt-2">
+                                    <input type="hidden" name="reviewId" value="@review.Id" />
+                                    <input type="hidden" name="stars" value="@Model.Stars" />
+                                    <input type="hidden" name="sort" value="@Model.Sort" />
+                                    <input type="hidden" name="page" value="@Model.Reviews.Page" />
+                                    <textarea class="form-control form-control-sm" name="reply" rows="3" maxlength="2000"
+                                              placeholder="Answer publicly. Thank the customer, explain what you changed, or offer a fix.">@review.VendorReply</textarea>
+                                    <button class="btn btn-sm btn-primary mt-2" type="submit">
+                                        @(review.HasVendorReply ? "Update reply" : "Post reply")
+                                    </button>
+                                </form>
+
+                                @if (review.HasVendorReply)
+                                {
+                                    <form method="post" asp-area="Vendor" asp-controller="Reviews" asp-action="Reply" class="mt-1">
+                                        <input type="hidden" name="reviewId" value="@review.Id" />
+                                        <input type="hidden" name="reply" value="" />
+                                        <input type="hidden" name="stars" value="@Model.Stars" />
+                                        <input type="hidden" name="sort" value="@Model.Sort" />
+                                        <input type="hidden" name="page" value="@Model.Reviews.Page" />
+                                        <button class="btn btn-link btn-sm text-danger p-0" type="submit">Remove reply</button>
+                                    </form>
+                                }
+                            </details>
+                        </div>
+                    </article>
+                }
+
+                @if (Model.Reviews.TotalPages > 1)
+                {
+                    <nav aria-label="Review pages">
+                        <ul class="pagination justify-content-center flex-wrap mb-0">
+                            <li class="page-item @(Model.Reviews.HasPrevious ? string.Empty : "disabled")">
+                                @if (Model.Reviews.HasPrevious)
+                                {
+                                    <a class="page-link" asp-area="Vendor" asp-controller="Reviews" asp-action="Index"
+                                       asp-route-stars="@Model.Stars" asp-route-sort="@Model.Sort"
+                                       asp-route-page="@(Model.Reviews.Page - 1)">Previous</a>
+                                }
+                                else
+                                {
+                                    <span class="page-link">Previous</span>
+                                }
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">Page @Model.Reviews.Page of @Model.Reviews.TotalPages</span>
+                            </li>
+                            <li class="page-item @(Model.Reviews.HasNext ? string.Empty : "disabled")">
+                                @if (Model.Reviews.HasNext)
+                                {
+                                    <a class="page-link" asp-area="Vendor" asp-controller="Reviews" asp-action="Index"
+                                       asp-route-stars="@Model.Stars" asp-route-sort="@Model.Sort"
+                                       asp-route-page="@(Model.Reviews.Page + 1)">Next</a>
+                                }
+                                else
+                                {
+                                    <span class="page-link">Next</span>
+                                }
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            }
+        </div>
+    </div>
+</div>

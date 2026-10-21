@@ -1,0 +1,242 @@
+/* ==========================================================================
+   shop-themes.css — storefront template themes.
+
+   Themes are palette swaps, not separate stylesheets. Each theme's tokens are
+   written onto the <html> element as inline --brand-* custom properties from
+   ShopTheme.ToCssVariables(); because an inline style beats the :root defaults
+   in brand.css, the entire page (chrome included) re-skins itself with no
+   markup changes. The picker previews the same way, one block per card.
+
+   This file therefore only carries what a palette cannot express on its own:
+   the shop hero, the picker cards, and a few per-theme flourishes.
+   ========================================================================== */
+
+/* ---------- Shop storefront hero ----------------------------------------- */
+
+.shop-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--brand-radius);
+    color: #fff;
+    background-color: var(--brand-primary);
+    background-image: linear-gradient(118deg, var(--brand-primary-dark) 0%, var(--brand-primary) 55%, var(--brand-primary-light) 100%);
+    box-shadow: var(--brand-shadow);
+}
+
+/* When the vendor supplies a banner the image sits under a scrim, so overlaying
+   white text stays legible whatever the photograph looks like. */
+.shop-hero.has-banner {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.shop-hero .shop-hero-inner {
+    padding: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    align-items: center;
+}
+
+.shop-hero .shop-hero-logo {
+    width: 84px;
+    height: 84px;
+    object-fit: contain;
+    flex: 0 0 auto;
+    border-radius: var(--brand-radius);
+    background: rgba(255, 255, 255, .92);
+    padding: .5rem;
+}
+
+.shop-hero .shop-hero-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brand-accent);
+}
+
+.shop-hero h1 {
+    color: #fff;
+    margin-bottom: .35rem;
+}
+
+.shop-hero .shop-hero-tagline {
+    font-size: 1.05rem;
+    margin-bottom: .5rem;
+    color: rgba(255, 255, 255, .92);
+}
+
+.shop-hero .shop-hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem 1rem;
+    font-size: .85rem;
+    color: rgba(255, 255, 255, .82);
+}
+
+.shop-hero .shop-hero-meta a {
+    color: #fff;
+    text-decoration: underline;
+}
+
+/* ---------- Small shared bits -------------------------------------------- */
+
+.shop-panel {
+    background: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+}
+
+.shop-theme-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--brand-primary-dark);
+    background: var(--brand-primary-tint);
+    border-radius: 999px;
+    padding: .2rem .65rem;
+}
+
+/* ---------- Theme picker ------------------------------------------------- */
+
+.shop-theme-card {
+    position: relative;
+    display: block;
+    height: 100%;
+    border: 2px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+    background: var(--brand-surface);
+    color: var(--brand-ink);
+    overflow: hidden;
+    cursor: pointer;
+    transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.shop-theme-card:hover {
+    box-shadow: var(--brand-shadow);
+    transform: translateY(-2px);
+}
+
+.shop-theme-card.is-selected {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 .2rem var(--brand-primary-tint);
+}
+
+.shop-theme-card .shop-theme-swatch {
+    display: flex;
+    height: 56px;
+}
+
+.shop-theme-card .shop-theme-swatch span {
+    flex: 1 1 0;
+}
+
+.shop-theme-card .shop-theme-card-body {
+    padding: .85rem 1rem 1rem;
+}
+
+.shop-theme-card .shop-theme-card-title {
+    font-weight: 700;
+    font-size: .95rem;
+    margin-bottom: .1rem;
+}
+
+.shop-theme-card .shop-theme-card-tone {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--brand-ink-subtle);
+}
+
+.shop-theme-card input[type="radio"] {
+    position: absolute;
+    top: .6rem;
+    right: .6rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: var(--brand-primary);
+}
+
+/* A mini sample of the theme's own chrome, so the preview reads as a storefront
+   rather than a swatch strip. */
+.shop-theme-preview {
+    margin-top: .6rem;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+    overflow: hidden;
+}
+
+.shop-theme-preview .bar {
+    background: var(--brand-primary);
+    color: #fff;
+    font-size: .68rem;
+    font-weight: 700;
+    padding: .25rem .5rem;
+}
+
+.shop-theme-preview .body {
+    padding: .5rem;
+    background: var(--brand-surface-muted);
+}
+
+.shop-theme-preview .btn-sample {
+    display: inline-block;
+    border-radius: var(--brand-radius);
+    background: var(--brand-accent);
+    border: 2px solid var(--brand-accent);
+    color: #000;
+    font-weight: 600;
+    font-size: .68rem;
+    padding: .1rem .5rem;
+}
+
+/* ---------- Per-theme flourishes ----------------------------------------- */
+
+/* Midnight: dark surfaces need faint hairline borders and deeper hover shadows. */
+html[data-shop-theme="midnight"] .card,
+html[data-shop-theme="midnight"] .shop-panel {
+    border-color: rgba(255, 255, 255, .09);
+}
+
+html[data-shop-theme="midnight"] .card-hover:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+}
+
+html[data-shop-theme="midnight"] .product-thumb {
+    background-color: var(--brand-surface-raised);
+}
+
+/* Boutique: a serif face earns wider tracking and italic eyebrows. */
+html[data-shop-theme="boutique"] h1,
+html[data-shop-theme="boutique"] h2,
+html[data-shop-theme="boutique"] h3 {
+    letter-spacing: .3px;
+}
+
+html[data-shop-theme="boutique"] .shop-hero .shop-hero-eyebrow {
+    font-style: italic;
+    letter-spacing: 2.4px;
+}
+
+/* Mono: flat, square and shadowless. */
+html[data-shop-theme="mono"] .card-hover:hover {
+    box-shadow: none;
+    border-color: var(--brand-ink);
+}
+
+html[data-shop-theme="mono"] .shop-theme-flag {
+    border-radius: 0;
+}
+
+/* Sunrise / Forest: slightly softer surfaces keep the palette from feeling flat. */
+html[data-shop-theme="sunrise"] .card,
+html[data-shop-theme="forest"] .card {
+    box-shadow: var(--brand-shadow);
+}

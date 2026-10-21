@@ -1,0 +1,71 @@
+@model IReadOnlyList<WebDS_Test.Domain.ReturnRequest>
+@{
+    var currency = (string)(ViewData["Currency"] ?? "$");
+    var openOnly = ViewData["OpenOnly"] as bool?;
+
+    string Money(decimal value) => currency + value.ToString("N2");
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Returns</h1>
+            <p class="text-muted mb-0">
+                @if (openOnly == true)
+                {
+                    <text>Open requests — a return stays open from when it is asked for until its refund is issued.</text>
+                }
+                else
+                {
+                    <text>Every return on @ViewData["ShopName"], newest first.</text>
+                }
+            </p>
+        </div>
+        <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Payouts" asp-action="Index">Payouts</a>
+    </div>
+
+    <div class="btn-group btn-group-sm mt-2" role="group" aria-label="Return filter">
+        <a class="btn btn-outline-secondary @(openOnly == true ? "" : "active")" asp-action="Index">All</a>
+        <a class="btn btn-outline-secondary @(openOnly == true ? "active" : "")" asp-action="Index" asp-route-open="true">Open only</a>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="alert alert-light border mt-3">No returns here.</div>
+    }
+
+    <div class="table-responsive mt-3">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Reference</th>
+                    <th>Order</th>
+                    <th>Requested</th>
+                    <th>Units</th>
+                    <th class="text-end">Goods value</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var request in Model)
+                {
+                    <tr>
+                        <td><strong>@request.Reference</strong></td>
+                        <td>
+                            <span class="small">@(request.Order?.OrderNumber ?? $"#{request.OrderId}")</span>
+                            <div class="small text-muted">@(request.Order?.CustomerName ?? request.Email)</div>
+                        </td>
+                        <td class="text-nowrap">@request.RequestedUtc.ToString("yyyy-MM-dd")</td>
+                        <td>@request.Lines.Sum(l => l.Quantity)</td>
+                        <td class="text-end text-nowrap">@Money(request.Lines.Sum(l => l.LineTotal))</td>
+                        <td><span class="badge @request.Status.ToCssClass()">@request.Status.ToDisplay()</span></td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@request.Id">Review</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,105 @@
+@model IReadOnlyList<WebDS_Test.Domain.AuditLog>
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    var actionName = ViewData["ActionName"] as string;
+    var entityType = ViewData["EntityType"] as string;
+    var entityId = ViewData["EntityId"] as int?;
+    var actor = ViewData["Actor"] as string;
+    var knownActions = ViewData["KnownActions"] as IReadOnlyList<string> ?? Array.Empty<string>();
+    var knownTypes = ViewData["KnownTypes"] as IReadOnlyList<string> ?? Array.Empty<string>();
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Audit trail</h1>
+            <p class="text-muted mb-0">
+                Administrative actions, newest first — what was done, by whom, and to which record. Append-only.
+            </p>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-actionName="@actionName"
+           asp-route-entityType="@entityType" asp-route-entityId="@entityId" asp-route-actor="@actor"
+           asp-route-format="csv">Export CSV</a>
+    </div>
+
+    <form method="get" class="row g-2 align-items-end mt-2 mb-3">
+        <div class="col-auto">
+            <label class="form-label small mb-0" for="actionName">Action</label>
+            <input id="actionName" name="actionName" class="form-control form-control-sm" placeholder="shop.approved"
+                   list="actionList" value="@actionName" style="width:14rem;" />
+            <datalist id="actionList">
+                @foreach (var a in knownActions)
+                {
+                    <option value="@a"></option>
+                }
+            </datalist>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0" for="entityType">Entity type</label>
+            <input id="entityType" name="entityType" class="form-control form-control-sm" list="typeList"
+                   placeholder="Shop" value="@entityType" />
+            <datalist id="typeList">
+                @foreach (var t in knownTypes)
+                {
+                    <option value="@t"></option>
+                }
+            </datalist>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0" for="entityId">Entity id</label>
+            <input id="entityId" name="entityId" type="number" class="form-control form-control-sm" value="@entityId" style="width:7rem;" />
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-0" for="actor">Actor</label>
+            <input id="actor" name="actor" class="form-control form-control-sm" placeholder="Name or email contains…" value="@actor" style="width:16rem;" />
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-primary btn-sm">Filter</button>
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Index">Clear</a>
+        </div>
+    </form>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Recorded (UTC)</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Entity</th>
+                        <th>Summary</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-4">No audit entries match this view.</td></tr>
+                    }
+                    @foreach (var entry in Model)
+                    {
+                        <tr>
+                            <td class="text-nowrap small">@entry.CreatedUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td class="small">@entry.Actor</td>
+                            <td><code class="small">@entry.Action</code></td>
+                            <td class="small text-nowrap">
+                                @entry.EntityType@(entry.EntityId is { } id ? $" #{id}" : "")
+                                @if (entry.EntityType == "Shop" && entry.EntityId is { } shopId)
+                                {
+                                    <a asp-controller="Audit" asp-action="Index" asp-route-entityType="Shop" asp-route-entityId="@shopId" title="This shop's history">↗</a>
+                                }
+                            </td>
+                            <td class="small">@entry.Summary</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (Model.Count >= 200)
+        {
+            <div class="card-footer text-muted small bg-white">
+                Showing the latest 200 entries — narrow the filters to go deeper.
+            </div>
+        }
+    </div>
+</div>

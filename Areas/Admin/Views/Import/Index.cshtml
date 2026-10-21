@@ -1,0 +1,85 @@
+@model WebDS_Test.Areas.Admin.Controllers.ImportController.ImportViewModel
+@{
+    ViewData["Title"] = "Import products";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Import products from CSV</h2>
+        <p class="text-muted small mb-0">
+            Bulk-create or update a shop's catalogue. Every row is checked before anything is written —
+            if one row is wrong, nothing is imported.
+        </p>
+    </div>
+    <a class="btn btn-outline-primary btn-sm" asp-area="Admin" asp-controller="Import" asp-action="Template">
+        Download template
+    </a>
+</div>
+
+@if (Model.Errors.Count > 0)
+{
+    <div class="alert alert-danger" role="alert">
+        <h3 class="h6 alert-heading">Nothing was imported</h3>
+        <p class="small mb-2">Fix these and upload the file again:</p>
+        <ul class="small mb-0 ps-3">
+            @foreach (var error in Model.Errors)
+            {
+                <li><code>@error</code></li>
+            }
+        </ul>
+    </div>
+}
+
+<form method="post" enctype="multipart/form-data" class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <label class="form-label required-label" for="shopId">Shop</label>
+                <select class="form-select" id="shopId" name="shopId" required>
+                    @foreach (var shop in Model.Shops)
+                    {
+                        <option value="@shop.Id" selected="@(Model.ShopId == shop.Id)">@shop.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-6">
+                <label class="form-label required-label" for="file">CSV file</label>
+                <input class="form-control" id="file" name="file" type="file" accept=".csv,text/csv" required />
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="createMissing" name="createMissing" value="true" checked />
+                    <label class="form-check-label" for="createMissing">
+                        Create products that do not exist yet. Leave unchecked to update only.
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-footer bg-white d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Import</button>
+        <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Products" asp-action="Index">Cancel</a>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-header bg-white fw-semibold">Expected columns</div>
+    <div class="card-body small">
+        <p class="text-muted">
+            Column order does not matter — columns are matched by name. Only <code>Name</code>,
+            <code>Price</code> and <code>SKU</code> are required.
+        </p>
+        <pre class="mb-3"><code>@Model.Header</code></pre>
+        <dl class="row mb-0">
+            <dt class="col-12 col-sm-3"><code>Name</code></dt><dd class="col-12 col-sm-9">Product name. Required.</dd>
+            <dt class="col-12 col-sm-3"><code>SKU</code></dt><dd class="col-12 col-sm-9">The stable business key. An existing product is matched on it first, then slug, then name. Required.</dd>
+            <dt class="col-12 col-sm-3"><code>Price</code></dt><dd class="col-12 col-sm-9">Variant price, decimal point regardless of locale. Required.</dd>
+            <dt class="col-12 col-sm-3"><code>Category</code></dt><dd class="col-12 col-sm-9">Must already exist, matched case-insensitively. Leave empty to leave the category alone.</dd>
+            <dt class="col-12 col-sm-3"><code>Images</code></dt><dd class="col-12 col-sm-9">Semicolon-separated URLs. The first is the primary image. Omitting the column entirely leaves the existing gallery untouched; supplying it replaces the gallery.</dd>
+            <dt class="col-12 col-sm-3"><code>IsPublished</code></dt><dd class="col-12 col-sm-9"><code>true</code>/<code>yes</code>/<code>1</code>. Defaults to true when absent.</dd>
+            <dt class="col-12 col-sm-3"><code>CompareAtPrice</code></dt><dd class="col-12 col-sm-9">Struck-through price for a sale. Empty means none.</dd>
+            <dt class="col-12 col-sm-3"><code>StockQuantity</code></dt><dd class="col-12 col-sm-9">Whole number. Defaults to 0.</dd>
+            <dt class="col-12 col-sm-3"><code>Slug</code></dt><dd class="col-12 col-sm-9">Derived from the name when empty.</dd>
+        </dl>
+    </div>
+</div>

@@ -1,0 +1,91 @@
+@model CategoryTreeViewModel
+@{
+    string Plural(int count, string singular) => count == 1 ? $"{count} {singular}" : $"{count} {singular}s";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Categories</h2>
+        <p class="text-muted small mb-0">
+            @Plural(Model.TotalCategories, "category") in the tree. Nest categories to build the storefront menu.
+        </p>
+    </div>
+    <a class="btn btn-primary" asp-area="Admin" asp-controller="Categories" asp-action="Create">New category</a>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle table-sticky-head mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Slug</th>
+                    <th scope="col" class="text-end">Display order</th>
+                    <th scope="col">Active</th>
+                    <th scope="col" class="text-end">Products</th>
+                    <th scope="col" class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model.Rows)
+                {
+                    <tr>
+                        <td>
+                            <div style="padding-left: @(row.Depth * 22)px">
+                                @if (row.Depth > 0)
+                                {
+                                    <span class="text-muted me-1" aria-hidden="true">↳</span>
+                                }
+                                <span class="fw-semibold">@row.Category.Name</span>
+                                @if (!string.IsNullOrWhiteSpace(row.Category.Description))
+                                {
+                                    <div class="small text-muted text-truncate-2">@row.Category.Description</div>
+                                }
+                            </div>
+                        </td>
+                        <td><code class="small">@row.Category.Slug</code></td>
+                        <td class="text-end">@row.Category.DisplayOrder</td>
+                        <td>
+                            @if (row.Category.IsActive)
+                            {
+                                <span class="badge text-bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge text-bg-secondary">Inactive</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <a asp-area="Admin" asp-controller="Products" asp-action="Index" asp-route-categoryId="@row.Category.Id">@row.ProductCount</a>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap justify-content-end gap-1">
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   asp-area="Admin" asp-controller="Categories" asp-action="Edit" asp-route-id="@row.Category.Id">Edit</a>
+
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   asp-area="Admin" asp-controller="Categories" asp-action="Create" asp-route-parentId="@row.Category.Id">Add sub-category</a>
+
+                                <form method="post" asp-area="Admin" asp-controller="Categories" asp-action="Delete"
+                                      onsubmit="return confirm('Delete this category? A category that still has sub-categories cannot be deleted, and one used by products is deactivated instead.');">
+                                    <input type="hidden" name="id" value="@row.Category.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+
+                @if (Model.Rows.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No categories yet.
+                            <a asp-area="Admin" asp-controller="Categories" asp-action="Create">Create the first one</a>.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

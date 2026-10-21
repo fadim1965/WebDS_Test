@@ -1,0 +1,385 @@
+@model WebDS_Test.Services.ShopDashboard
+@using WebDS_Test.Areas.Admin.Models
+@using WebDS_Test.Domain
+@inject Microsoft.Extensions.Options.IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    var currency = StoreOptions.Value.CurrencySymbol;
+    var stats = Model;
+
+    string Money(decimal value) => currency + value.ToString("N2");
+    string Pct(double value) => value.ToString("F1") + "%";
+
+    var maxDailyRev = stats.DailyRevenue.Count > 0 ? stats.DailyRevenue.Max(d => d.Revenue) : 0m;
+
+    string RankBadge(int i) => i switch
+    {
+        0 => "<span class=\"rank-badge gold\">1</span>",
+        1 => "<span class=\"rank-badge silver\">2</span>",
+        2 => "<span class=\"rank-badge bronze\">3</span>",
+        _ => "<span class=\"rank-badge plain\">" + (i + 1) + "</span>"
+    };
+}
+
+@{
+    ViewData["Title"] = "Vendor dashboard";
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">@Model.ShopName</h1>
+            <p class="text-muted mb-0">Your vendor dashboard — sales, payouts and product performance.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Orders" asp-action="Index">Orders</a>
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Returns" asp-action="Index">Returns</a>
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Products" asp-action="Index">Products</a>
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Reviews" asp-action="Index">Reviews</a>
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Payouts" asp-action="Index">Payouts</a>
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Appearance" asp-action="Index">Appearance</a>
+        </div>
+    </div>
+
+    @{
+        // The decision on this shop, and the reason for it, shown where the vendor lands —
+        // a rejection or suspension they cannot see is one they cannot act on.
+        var currentShop = ViewData["Shop"] as Shop;
+    }
+    @if (currentShop is not null && currentShop.Status != ShopStatus.Approved)
+    {
+        var alertClass = currentShop.Status switch
+        {
+            ShopStatus.Rejected => "alert-danger",
+            ShopStatus.Suspended => "alert-secondary",
+            _ => "alert-warning"
+        };
+        <div class="alert @alertClass mt-3 mb-0">
+            <strong>@currentShop.Status.ToDisplay()</strong>
+            @if (!string.IsNullOrWhiteSpace(currentShop.StatusReason))
+            {
+                <span> — @currentShop.StatusReason</span>
+            }
+            @if (currentShop.Status == ShopStatus.Rejected)
+            {
+                <span>
+                    You can update your application and apply again.
+                    <a class="alert-link" asp-area="Vendor" asp-controller="Onboarding" asp-action="Register">Edit and resubmit</a>
+                </span>
+            }
+            else if (currentShop.Status == ShopStatus.PendingApproval)
+            {
+                <span> Your shop goes live once the marketplace approves it.</span>
+            }
+        </div>
+    }
+
+    @* ============ KPI row ============ *@
+    <div class="kpi-row mb-3">
+        <div class="kpi">
+            <div class="kpi-value">@Money(stats.GrossSales)</div>
+            <div class="kpi-label">Gross sales</div>
+            <div class="kpi-delta neutral">@Money(stats.RevenueLast7Days) last 7 days</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-value">@stats.TotalOrders</div>
+            <div class="kpi-label">Total orders</div>
+            <div class="kpi-delta neutral">@stats.OrdersLast7Days last 7 days</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-value">@Money(stats.NetPayable)</div>
+            <div class="kpi-label">Net payable (lifetime)</div>
+            <div class="kpi-delta neutral">@Money(stats.CommissionOwed) commission withheld</div>
+        </div>
+        <div class="kpi border-success">
+            <div class="kpi-value">@Money(stats.UnsettledPayable)</div>
+            <div class="kpi-label">Outstanding payout</div>
+            <div class="kpi-delta neutral"><a class="small" asp-area="Vendor" asp-controller="Payouts" asp-action="Index">View payouts</a></div>
+        </div>
+    </div>
+
+    @* ============ Revenue trend (7 days) ============ *@
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="section-icon">📈</span>
+                        <span class="fw-semibold">Revenue trend · last 7 days</span>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-semibold">@Money(stats.RevenueLast7Days)</div>
+                        <div class="small text-muted">@stats.OrdersLast7Days orders</div>
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    @if (stats.DailyRevenue.Any(d => d.Revenue > 0 || d.Orders > 0))
+                    {
+                        <div class="sparkline" id="vendorRevenueSparkline" aria-label="Daily revenue trend">
+                            @foreach (var day in stats.DailyRevenue)
+                            {
+                                var pct = maxDailyRev > 0 ? (double)day.Revenue / (double)maxDailyRev * 100 : 0;
+                                <div class="sparkline-bar"
+                                     style="height:@pct%;"
+                                     role="gridcell"
+                                     aria-label="@(day.Date.ToString("ddd d MMM")): @Money(day.Revenue), @day.Orders orders">
+                                    <div class="sparkline-tooltip">
+                                        @day.Date.ToString("ddd d MMM") — @Money(day.Revenue) (@day.Orders orders)
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="mini-bar-axis mt-2">
+                            @for (int i = 0; i < stats.DailyRevenue.Count; i++)
+                            {
+                                var day = stats.DailyRevenue[i];
+                                <span style="flex:1;text-align:@(i == stats.DailyRevenue.Count - 1 ? "end" : "start");">
+                                    @day.Date.ToString("d MMM")
+                                </span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-state" style="padding:1.5rem;">
+                            <span class="empty-icon">📭</span>
+                            <div class="text-muted small">No sales recorded yet.</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="section-icon">💳</span>
+                        <span class="fw-semibold">Payment methods</span>
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    @if (stats.PaymentMethods.Any())
+                    {
+                        @foreach (var pm in stats.PaymentMethods)
+                        {
+                            var share = stats.GrossSales > 0 ? (double)pm.RevenueRaw / (double)stats.GrossSales * 100 : 0;
+                            <div class="dashboard-stat mb-2">
+                                <div class="stat-head">
+                                    <div>
+                                        <div class="stat-label">@pm.Label</div>
+                                        <div class="stat-value">@pm.Orders</div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-semibold">@Money(pm.RevenueRaw)</div>
+                                        <div class="small text-muted">@Pct(share) of revenue</div>
+                                    </div>
+                                </div>
+                                <div class="stat-trend trend-neutral">
+                                    <span>@pm.Orders orders</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="empty-state" style="padding:1.5rem;">
+                            <span class="empty-icon">💳</span>
+                            <div class="text-muted small">No payment data yet.</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ============ Top products ============ *@
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="section-icon">🏆</span>
+                        <span class="fw-semibold">Top products by revenue</span>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width:2.5rem;">#</th>
+                                <th scope="col">Product</th>
+                                <th scope="col" class="text-end">Units</th>
+                                <th scope="col" class="text-end">Orders</th>
+                                <th scope="col" class="text-end">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < stats.TopProductsByRevenue.Count; i++)
+                            {
+                                var p = stats.TopProductsByRevenue[i];
+                                <tr>
+                                    <td>@Html.Raw(RankBadge(i))</td>
+                                    <td>
+                                        <div class="fw-semibold">@p.Name</div>
+                                        <div class="small text-muted">@p.Category</div>
+                                    </td>
+                                    <td class="text-end">@p.Units</td>
+                                    <td class="text-end">@p.Orders</td>
+                                    <td class="text-end fw-semibold">@Money(p.Revenue)</td>
+                                </tr>
+                            }
+                            @if (!stats.TopProductsByRevenue.Any())
+                            {
+                                <tr><td colspan="5" class="text-muted text-center py-3">No sales recorded yet.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="section-icon">📦</span>
+                        <span class="fw-semibold">Top products by units sold</span>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width:2.5rem;">#</th>
+                                <th scope="col">Product</th>
+                                <th scope="col" class="text-end">Units</th>
+                                <th scope="col" class="text-end">Orders</th>
+                                <th scope="col" class="text-end">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < stats.TopProductsByUnits.Count; i++)
+                            {
+                                var p = stats.TopProductsByUnits[i];
+                                <tr>
+                                    <td>@Html.Raw(RankBadge(i))</td>
+                                    <td>
+                                        <div class="fw-semibold">@p.Name</div>
+                                        <div class="small text-muted">@p.Category</div>
+                                    </td>
+                                    <td class="text-end">@p.Units</td>
+                                    <td class="text-end">@p.Orders</td>
+                                    <td class="text-end fw-semibold">@Money(p.Revenue)</td>
+                                </tr>
+                            }
+                            @if (!stats.TopProductsByUnits.Any())
+                            {
+                                <tr><td colspan="5" class="text-muted text-center py-3">No sales recorded yet.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ============ Low stock ============ *@
+    @if (stats.LowStockListings.Any())
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="section-icon">⚠️</span>
+                    <span class="fw-semibold">Low stock</span>
+                </div>
+                <a class="small" asp-area="Vendor" asp-controller="Products" asp-action="Index">Manage products</a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Product</th>
+                            <th scope="col" class="text-end">Variant SKU</th>
+                            <th scope="col" class="text-end">Stock</th>
+                            <th scope="col" class="text-end">Threshold</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var listing in stats.LowStockListings)
+                        {
+                            <tr>
+                                <td>@listing.Product?.Name</td>
+                                <td class="text-end"><code class="small">@listing.Sku</code></td>
+                                <td class="text-end">
+                                    @if (listing.StockQuantity <= 0)
+                                    {
+                                        <span class="badge text-bg-danger">Out of stock</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge text-bg-warning">@listing.StockQuantity</span>
+                                    }
+                                </td>
+                                <td class="text-end text-muted small">@listing.LowStockThreshold</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @* ============ Recent orders ============ *@
+    <div class="card">
+        <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="section-icon">📋</span>
+                <span class="fw-semibold">Recent orders</span>
+            </div>
+            <a class="small" asp-area="Vendor" asp-controller="Orders" asp-action="Index">All orders</a>
+        </div>
+        <div class="card-body p-0">
+            @if (stats.RecentOrders.Any())
+            {
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Order</th>
+                            <th scope="col">Placed</th>
+                            <th scope="col">Customer</th>
+                            <th scope="col" class="text-end">Items</th>
+                            <th scope="col" class="text-end">Total</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in stats.RecentOrders)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-area="Vendor" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">@order.OrderNumber</a>
+                                </td>
+                                <td class="small text-muted">@order.PlacedUtc.ToString("d MMM yyyy HH:mm")</td>
+                                <td>
+                                    @(string.IsNullOrWhiteSpace(order.CustomerName) ? "—" : order.CustomerName)
+                                    <div class="small text-muted">@order.Email</div>
+                                </td>
+                                <td class="text-end">@order.TotalQuantity</td>
+                                <td class="text-end">@Money(order.GrandTotal)</td>
+                                <td><span class="badge @order.Status.ToCssClass()">@order.Status.ToDisplay()</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="card-body text-muted small py-3">No orders yet.</div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // No additional scripts required: sparklines are pure CSS.
+    </script>
+}

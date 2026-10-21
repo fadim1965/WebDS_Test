@@ -1,0 +1,1079 @@
+/* ==========================================================================
+   brand.css — visual identity for the eShop storefront and admin area.
+
+   The palette is taken from the brand's own stylesheet (css-EN.css), not
+   approximated. Confidence per token is noted inline; every value is emitted as
+   a CSS custom property from BrandingOptions, so the configuration section
+   "Branding" overrides all of it without touching markup.
+
+   Verified against the site's CSS:
+     primary blue    #006db7  (91 occurrences — links, top bar, active states)
+     accent yellow   #fed300  (34 occurrences — buttons, link hover, logo mark)
+     footer          #015a97
+     header bar      #f1f1f1
+     surfaces        #f6f6f6 / #efefef
+     muted text      #2a4c62 / #6b6b6b
+     borders         #e6e6e6 / #d7d7d7
+     danger          #e33c3c
+
+   Brand conventions reproduced deliberately:
+     - Buttons are YELLOW with BLACK text, a 2px yellow border, and on hover the
+       background drops out to transparent (the border stays). This "outline on
+       hover" behaviour is distinctive and is applied to .btn-brand.
+     - Links are blue and turn YELLOW on hover.
+     - Corners are tight: 2-4px, not the 14px pill look of the previous theme.
+   ========================================================================== */
+
+/* ---------- Fallback tokens (overridden by the server-rendered palette) --- */
+
+:root {
+    --brand-primary: #006db7;
+    --brand-primary-dark: #015a97;
+    --brand-primary-darker: #0b5f98;
+    --brand-primary-light: #2683c2;
+    --brand-primary-tint: #c9e0f0;
+    --brand-accent: #fed300;
+    --brand-accent-dark: #e0b900;
+    --brand-ink: #1a1a1a;
+    --brand-ink-muted: #2a4c62;
+    --brand-ink-subtle: #6b6b6b;
+    --brand-surface: #ffffff;
+    --brand-surface-muted: #f6f6f6;
+    --brand-surface-raised: #f1f1f1;
+    --brand-border: #e6e6e6;
+    --brand-border-strong: #d7d7d7;
+    --brand-danger: #e33c3c;
+    --brand-success: #2e7d32;
+    --brand-radius: 4px;
+    --brand-shadow: 0 1px 3px rgba(0, 0, 0, .10);
+    --brand-font: 'Libre Franklin', 'Open Sans', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* ---------- Base ---------------------------------------------------------- */
+
+body {
+    font-family: var(--brand-font);
+    font-size: 15px;
+    color: var(--brand-ink);
+    background-color: var(--brand-surface-muted);
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    color: var(--brand-ink);
+}
+
+a {
+    color: var(--brand-primary);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--brand-accent);
+    text-decoration: underline;
+}
+
+.text-muted {
+    color: var(--brand-ink-subtle) !important;
+}
+
+hr {
+    border-color: var(--brand-border);
+    opacity: 1;
+}
+
+/* ---------- Brand buttons ------------------------------------------------- */
+
+.btn {
+    border-radius: var(--brand-radius);
+    font-weight: 600;
+    transition: background-color .3s ease, color .3s ease, border-color .3s ease;
+}
+
+/* The signature secondary action: yellow fill, black label, outlined on hover. */
+.btn-brand {
+    background-color: var(--brand-accent);
+    border: 2px solid var(--brand-accent);
+    color: #000;
+    padding: .3rem .85rem;
+}
+
+.btn-brand:hover,
+.btn-brand:focus {
+    background-color: transparent;
+    border-color: var(--brand-accent);
+    color: #000;
+}
+
+.btn-primary {
+    --bs-btn-bg: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary-dark);
+    --bs-btn-hover-border-color: var(--brand-primary-dark);
+    --bs-btn-active-bg: var(--brand-primary-darker);
+    --bs-btn-active-border-color: var(--brand-primary-darker);
+    --bs-btn-disabled-bg: var(--brand-primary-light);
+    --bs-btn-disabled-border-color: var(--brand-primary-light);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--brand-primary);
+    --bs-btn-border-color: var(--brand-primary);
+    --bs-btn-hover-bg: var(--brand-primary);
+    --bs-btn-hover-border-color: var(--brand-primary);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: var(--brand-primary-dark);
+    --bs-btn-active-border-color: var(--brand-primary-dark);
+}
+
+/* Outline buttons on a dark surface need light ink. */
+.btn-outline-light {
+    --bs-btn-color: #fff;
+    --bs-btn-border-color: rgba(255, 255, 255, .75);
+    --bs-btn-hover-bg: #fff;
+    --bs-btn-hover-border-color: #fff;
+    --bs-btn-hover-color: var(--brand-primary);
+}
+
+.btn-link {
+    color: var(--brand-primary);
+}
+
+.btn-link:hover {
+    color: var(--brand-accent);
+}
+
+/* ---------- Utility bar (blue strip above the header) -------------------- */
+
+.brand-utilitybar {
+    background-color: var(--brand-primary);
+    color: #fff;
+    font-size: 14px;
+    padding: .35rem 0;
+}
+
+.brand-utilitybar a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.brand-utilitybar a:hover {
+    color: var(--brand-accent);
+    text-decoration: none;
+}
+
+.brand-utilitybar .utility-divider {
+    border-left: 1px solid rgba(255, 255, 255, .35);
+    margin: 0 .6rem;
+}
+
+/* ---------- Header ------------------------------------------------------- */
+
+.brand-header {
+    background-color: var(--brand-surface);
+    border-bottom: 1px solid var(--brand-border);
+}
+
+/* The active channel tab, matching the rounded top corners of the brand's own tab. */
+.brand-channeltab {
+    display: inline-block;
+    padding: .3rem 1.1rem;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.5;
+    border-radius: 20px 20px 0 0;
+    background-color: rgba(255, 255, 255, .22);
+    color: #fff;
+}
+
+.brand-channeltab.active,
+.brand-channeltab:hover {
+    background-color: var(--brand-surface);
+    color: var(--brand-primary);
+    text-decoration: none;
+}
+
+.brand-wordmark {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .1rem;
+    font-weight: 800;
+    font-size: 1.85rem;
+    letter-spacing: -.5px;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+.brand-wordmark .wordmark-liban { color: var(--brand-primary); }
+.brand-wordmark .wordmark-post { color: var(--brand-ink); }
+
+.brand-tagline {
+    font-size: 11px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--brand-ink-subtle);
+}
+
+.brand-accountlink {
+    color: var(--brand-primary);
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.brand-accountlink:hover {
+    color: var(--brand-accent);
+    text-decoration: none;
+}
+
+/* Search: flat bordered input with a yellow square submit, as on the brand site. */
+.brand-search .form-control {
+    border: 1px solid var(--brand-border-strong);
+    border-right: none;
+    border-radius: var(--brand-radius) 0 0 var(--brand-radius);
+    font-size: 14px;
+    padding: .35rem .7rem;
+}
+
+.brand-search .form-control:focus {
+    border-color: var(--brand-primary);
+    box-shadow: none;
+}
+
+.brand-search .btn {
+    background-color: var(--brand-accent);
+    border: 1px solid var(--brand-accent);
+    border-radius: 0 var(--brand-radius) var(--brand-radius) 0;
+    color: #000;
+    width: 42px;
+    display: grid;
+    place-items: center;
+}
+
+.brand-search .btn:hover {
+    background-color: var(--brand-accent-dark);
+    border-color: var(--brand-accent-dark);
+}
+
+/* ---------- Primary navigation ------------------------------------------- */
+
+.brand-nav {
+    background-color: var(--brand-surface);
+    border-bottom: 3px solid var(--brand-primary);
+}
+
+.brand-nav .nav-link {
+    color: var(--brand-ink);
+    font-weight: 600;
+    font-size: 15px;
+    padding: .55rem .9rem;
+    border-bottom: 4px solid transparent;
+}
+
+.brand-nav .nav-link:hover,
+.brand-nav .nav-link.active {
+    color: var(--brand-primary);
+    border-bottom-color: var(--brand-accent);
+}
+
+.brand-nav .dropdown-menu {
+    border-radius: var(--brand-radius);
+    border-color: var(--brand-border);
+    box-shadow: var(--brand-shadow);
+}
+
+.brand-nav .dropdown-item:hover {
+    background-color: var(--brand-primary-tint);
+    color: var(--brand-primary-dark);
+}
+
+.cart-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .35rem .8rem;
+    border-radius: var(--brand-radius);
+    background-color: var(--brand-primary);
+    color: #fff;
+    border: 2px solid var(--brand-primary);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.cart-pill:hover {
+    background-color: transparent;
+    color: var(--brand-primary);
+    text-decoration: none;
+}
+
+.cart-pill .cart-count {
+    background-color: var(--brand-accent);
+    color: #000;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    padding: .05rem .45rem;
+    min-width: 1.3rem;
+    text-align: center;
+}
+
+/* ---------- Surfaces ----------------------------------------------------- */
+
+.card {
+    border-radius: var(--brand-radius);
+    border: 1px solid var(--brand-border);
+    background-color: var(--brand-surface);
+}
+
+.card-header {
+    background-color: var(--brand-surface-raised);
+    border-bottom: 1px solid var(--brand-border);
+    font-weight: 600;
+}
+
+.card-hover {
+    transition: box-shadow .2s ease, border-color .2s ease;
+    height: 100%;
+    overflow: hidden;
+}
+
+.card-hover:hover {
+    border-color: var(--brand-primary);
+    box-shadow: 0 4px 14px rgba(0, 109, 183, .16);
+}
+
+/* ---------- Hero --------------------------------------------------------- */
+
+.hero {
+    background-color: var(--brand-primary);
+    background-image: linear-gradient(118deg, var(--brand-primary-dark) 0%, var(--brand-primary) 55%, var(--brand-primary-light) 100%);
+    color: #fff;
+    border-radius: var(--brand-radius);
+}
+
+.hero .hero-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--brand-accent);
+}
+
+.hero h1 {
+    color: #fff;
+}
+
+.hero-stat {
+    background-color: rgba(255, 255, 255, .13);
+    border: 1px solid rgba(255, 255, 255, .28);
+    border-radius: var(--brand-radius);
+    padding: .7rem .9rem;
+}
+
+.hero-stat .h4 {
+    color: var(--brand-accent);
+}
+
+/* ---------- Product presentation ----------------------------------------- */
+
+.product-thumb {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background-color: var(--brand-surface-raised);
+    border-bottom: 1px solid var(--brand-border);
+}
+
+.product-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.product-thumb.is-large {
+    aspect-ratio: 1 / 1;
+    border-bottom: none;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+    background-color: #fff;
+}
+
+.thumb-badges {
+    position: absolute;
+    top: .55rem;
+    left: .55rem;
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    align-items: flex-start;
+}
+
+.badge-sale {
+    background-color: var(--brand-danger);
+    color: #fff;
+    font-weight: 700;
+}
+
+.badge-featured {
+    background-color: var(--brand-accent);
+    color: #000;
+    font-weight: 700;
+}
+
+.stock-ribbon {
+    position: absolute;
+    inset: auto 0 0 0;
+    background-color: rgba(26, 26, 26, .82);
+    color: #fff;
+    font-size: 11px;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: .25rem .6rem;
+    text-align: center;
+}
+
+.product-title {
+    font-size: .97rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--brand-ink);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.card-hover:hover .product-title {
+    color: var(--brand-primary);
+}
+
+.price-now {
+    font-weight: 700;
+    font-size: 1.08rem;
+    color: var(--brand-ink);
+}
+
+.price-was {
+    color: var(--brand-ink-subtle);
+    text-decoration: line-through;
+    font-size: .85rem;
+}
+
+.product-category {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    font-weight: 600;
+    color: var(--brand-primary);
+}
+
+/* ---------- Category tiles ----------------------------------------------- */
+
+.category-tile {
+    display: block;
+    background-color: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+    padding: 1rem;
+    height: 100%;
+    color: var(--brand-ink);
+    border-top: 3px solid var(--brand-primary);
+}
+
+.category-tile:hover {
+    border-color: var(--brand-primary);
+    box-shadow: 0 4px 12px rgba(0, 109, 183, .14);
+    text-decoration: none;
+    color: var(--brand-ink);
+}
+
+.category-tile .tile-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--brand-radius);
+    background-color: var(--brand-primary-tint);
+    color: var(--brand-primary-dark);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    margin-bottom: .6rem;
+}
+
+/* ---------- Filter panel ------------------------------------------------- */
+
+.filter-panel {
+    background-color: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    border-radius: var(--brand-radius);
+    position: sticky;
+    top: 1rem;
+}
+
+.filter-panel .form-label {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--brand-ink-muted);
+}
+
+/* ---------- Forms -------------------------------------------------------- */
+
+.form-control,
+.form-select {
+    border-radius: var(--brand-radius);
+    border-color: var(--brand-border-strong);
+    font-size: 14px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 .15rem rgba(0, 109, 183, .18);
+}
+
+.form-check-input:checked {
+    background-color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+.form-check-input:focus {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 .15rem rgba(0, 109, 183, .18);
+}
+
+.field-validation-error,
+.validation-summary-errors {
+    color: var(--brand-danger);
+    font-size: 13px;
+}
+
+.input-validation-error {
+    border-color: var(--brand-danger) !important;
+}
+
+/* ---------- Alerts ------------------------------------------------------- */
+
+.alert {
+    border-radius: var(--brand-radius);
+    border-width: 1px;
+    font-size: 14px;
+}
+
+.alert-info {
+    background-color: var(--brand-primary-tint);
+    border-color: var(--brand-primary-light);
+    color: var(--brand-primary-darker);
+}
+
+.alert-success {
+    background-color: #e8f5e9;
+    border-color: var(--brand-success);
+    color: #1b5e20;
+}
+
+.alert-warning {
+    background-color: #fff8e1;
+    border-color: var(--brand-accent);
+    color: #7a5c00;
+}
+
+.alert-danger {
+    background-color: #fdecea;
+    border-color: var(--brand-danger);
+    color: #8e2620;
+}
+
+/* ---------- Tables ------------------------------------------------------- */
+
+.table {
+    --bs-table-border-color: var(--brand-border);
+    font-size: 14px;
+}
+
+.table > thead > tr > th {
+    background-color: var(--brand-surface-raised);
+    color: var(--brand-ink-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    font-weight: 700;
+    border-bottom: 2px solid var(--brand-primary);
+}
+
+.table-sticky-head thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+/* ---------- Order status timeline ---------------------------------------- */
+
+.status-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.status-steps li {
+    flex: 1 1 120px;
+    border-top: 3px solid var(--brand-border-strong);
+    padding-top: .6rem;
+    font-size: .82rem;
+    color: var(--brand-ink-subtle);
+}
+
+.status-steps li.done {
+    border-top-color: var(--brand-primary);
+    color: var(--brand-ink);
+    font-weight: 600;
+}
+
+.status-steps li.current {
+    border-top-color: var(--brand-accent);
+    color: var(--brand-primary-dark);
+    font-weight: 700;
+}
+
+/* ---------- Commerce chrome ---------------------------------------------- */
+
+.free-shipping-bar {
+    background-color: var(--brand-primary-tint);
+    border: 1px solid var(--brand-primary-light);
+    border-radius: var(--brand-radius);
+    padding: .45rem .75rem;
+    font-size: 13px;
+    color: var(--brand-primary-darker);
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: .35rem 0;
+    font-size: 14px;
+}
+
+.summary-row.total {
+    border-top: 2px solid var(--brand-primary);
+    margin-top: .4rem;
+    padding-top: .6rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+/* ---------- Footer ------------------------------------------------------- */
+
+.site-footer {
+    background-color: var(--brand-primary-dark);
+    /* Repeats the brand's own diagonal chevron treatment. */
+    background-image: linear-gradient(to right top, transparent 33%, #01538b 33%, #01538b 66%, transparent 66%);
+    color: #fff;
+    margin-top: 3rem;
+    padding: 2.5rem 0 1.25rem;
+    font-size: 14px;
+}
+
+.site-footer a {
+    color: #fff;
+}
+
+.site-footer a:hover {
+    color: var(--brand-accent);
+}
+
+.site-footer h6 {
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brand-accent);
+    margin-bottom: .9rem;
+}
+
+.site-footer ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.site-footer ul li {
+    margin-bottom: .4rem;
+}
+
+.site-footer hr {
+    border-color: rgba(255, 255, 255, .25);
+}
+
+.footer-legal {
+    font-size: 13px;
+    color: rgba(255, 255, 255, .8);
+}
+
+/* ---------- Admin -------------------------------------------------------- */
+
+.admin-body {
+    background-color: var(--brand-surface-raised);
+}
+
+.admin-sidebar {
+    background-color: #0b3c5d;
+    color: #cbd5e1;
+    min-height: 100vh;
+}
+
+.admin-sidebar a {
+    color: #cbd5e1;
+    display: block;
+    padding: .5rem .85rem;
+    border-radius: var(--brand-radius);
+    font-size: 14px;
+}
+
+.admin-sidebar a:hover {
+    background-color: rgba(255, 255, 255, .1);
+    color: #fff;
+    text-decoration: none;
+}
+
+.admin-sidebar a.active {
+    background-color: var(--brand-primary);
+    color: #fff;
+    font-weight: 600;
+}
+
+.admin-sidebar .sidebar-heading {
+    text-transform: uppercase;
+    letter-spacing: 1.1px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--brand-accent);
+    padding: .9rem .85rem .3rem;
+}
+
+.admin-topbar {
+    background-color: var(--brand-surface);
+    border-bottom: 3px solid var(--brand-primary);
+}
+
+.stat-card {
+    border-left: 4px solid var(--brand-primary);
+}
+
+.stat-card .stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--brand-primary-dark);
+}
+
+.stat-card .stat-label {
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    font-size: 11px;
+    color: var(--brand-ink-subtle);
+    font-weight: 700;
+}
+
+/* ---------- Pagination --------------------------------------------------- */
+
+.pagination {
+    --bs-pagination-color: var(--brand-primary);
+    --bs-pagination-hover-color: var(--brand-primary-dark);
+    --bs-pagination-hover-bg: var(--brand-primary-tint);
+    --bs-pagination-active-bg: var(--brand-primary);
+    --bs-pagination-active-border-color: var(--brand-primary);
+    --bs-pagination-focus-box-shadow: 0 0 0 .15rem rgba(0, 109, 183, .18);
+}
+
+.pagination .page-link {
+    border-radius: var(--brand-radius);
+    margin: 0 2px;
+}
+
+/* ---------- Utilities ---------------------------------------------------- */
+
+.text-truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.text-primary {
+    color: var(--brand-primary) !important;
+}
+
+.bg-brand {
+    background-color: var(--brand-primary) !important;
+}
+
+.text-accent {
+    color: var(--brand-accent) !important;
+}
+
+.avatar-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--brand-primary-tint);
+    color: var(--brand-primary-dark);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: .85rem;
+}
+
+.required-label::after {
+    content: " *";
+    color: var(--brand-danger);
+}
+
+.breadcrumb {
+    font-size: 13px;
+    --bs-breadcrumb-divider-color: var(--brand-ink-subtle);
+}
+
+.breadcrumb a {
+    color: var(--brand-primary);
+}
+
+/* ==========================================================================
+   Ratings and reviews
+   --------------------------------------------------------------------------
+   The star strip is two stacked rows of the same five glyphs: a grey base and
+   a gold copy clipped to the rating's percentage. That renders fractional
+   stars (4.3, 3.7 …) with no images and no script, and stays crisp at any size.
+   ========================================================================== */
+
+.star-rating {
+    position: relative;
+    display: inline-block;
+    line-height: 1;
+    font-size: 1rem;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    color: #d9d9d9;
+    vertical-align: -0.08em;
+}
+
+.star-rating-base {
+    color: inherit;
+}
+
+.star-rating-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    color: var(--brand-accent-dark);
+}
+
+.star-rating-sm {
+    font-size: .8rem;
+    letter-spacing: .5px;
+}
+
+.star-rating-lg {
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+}
+
+/* A card's rating links through to its reviews, so it must not read as plain text. */
+.product-rating,
+.product-rating:visited {
+    color: inherit;
+}
+
+.product-rating:hover .star-rating-fill {
+    color: var(--brand-accent);
+}
+
+.product-seller {
+    color: var(--brand-primary);
+}
+
+.product-seller:hover {
+    text-decoration: underline !important;
+}
+
+/* ---- Rating headline on the product page ---- */
+
+.review-average {
+    display: flex;
+    align-items: baseline;
+    gap: .25rem;
+    line-height: 1;
+}
+
+.review-average-value {
+    font-size: 2.75rem;
+    font-weight: 700;
+    color: var(--brand-ink);
+}
+
+.review-average-max {
+    font-size: .8rem;
+    color: var(--brand-ink-subtle);
+}
+
+/* ---- Per-star histogram. Each row is a link that filters the list. ---- */
+
+.review-bar {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .15rem .25rem;
+    border-radius: var(--brand-radius);
+    text-decoration: none;
+    color: inherit;
+    font-size: .85rem;
+}
+
+.review-bar:hover,
+.review-bar.is-active {
+    background-color: var(--brand-surface-muted);
+}
+
+.review-bar.is-active {
+    font-weight: 600;
+}
+
+.review-bar-label {
+    flex: 0 0 3.25rem;
+    white-space: nowrap;
+}
+
+.review-bar-track {
+    flex: 1 1 auto;
+    height: 8px;
+    border-radius: 4px;
+    background-color: var(--brand-surface-raised);
+    overflow: hidden;
+}
+
+.review-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: 4px;
+    background-color: var(--brand-accent-dark);
+}
+
+.review-bar-count {
+    flex: 0 0 2.25rem;
+    text-align: right;
+    color: var(--brand-ink-subtle);
+}
+
+/* ---- One review ---- */
+
+.review-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--brand-primary-tint);
+    color: var(--brand-primary-dark);
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: .8rem;
+    flex: 0 0 auto;
+}
+
+.review-body {
+    white-space: pre-line; /* keeps the reviewer's own paragraph breaks */
+}
+
+.review-reply {
+    border-left: 3px solid var(--brand-primary-tint);
+    background-color: var(--brand-surface-muted);
+    border-radius: 0 var(--brand-radius) var(--brand-radius) 0;
+    padding: .6rem .8rem;
+}
+
+/* Star picker. The radio precedes its label, so the checked state is styled with a
+   sibling selector — no script needed. */
+.rating-input label {
+    min-width: 2.5rem;
+}
+
+.rating-input .btn-check:checked + label,
+.rating-input .btn-check:active + label {
+    background-color: var(--brand-accent);
+    border-color: var(--brand-accent-dark);
+    color: var(--brand-ink);
+}
+
+/* Clamped in the moderation queue, where a table row has no room for prose. */
+.admin-review-body {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   Search suggestions
+   ========================================================================== */
+
+.search-suggest {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    z-index: 1040;
+    background-color: var(--brand-surface);
+    border: 1px solid var(--brand-border);
+    border-radius: 0 0 var(--brand-radius) var(--brand-radius);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .14);
+    max-height: 24rem;
+    overflow-y: auto;
+    text-align: left;
+}
+
+.search-suggest-heading {
+    padding: .45rem .75rem .2rem;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--brand-ink-subtle);
+}
+
+.search-suggest-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .45rem .75rem;
+    text-decoration: none;
+    color: var(--brand-ink);
+    font-size: .9rem;
+}
+
+.search-suggest-item:hover,
+.search-suggest-item.is-active {
+    background-color: var(--brand-surface-muted);
+    color: var(--brand-ink);
+}
+
+.search-suggest-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-suggest-price {
+    flex: 0 0 auto;
+    color: var(--brand-ink-subtle);
+    font-variant-numeric: tabular-nums;
+}

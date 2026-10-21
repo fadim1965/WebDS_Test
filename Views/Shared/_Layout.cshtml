@@ -1,0 +1,254 @@
+@using Microsoft.Extensions.Options
+@using WebDS_Test.Services.Localization
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@inject IOptions<WebDS_Test.Domain.BrandingOptions> BrandOptions
+@inject ITranslator T
+@{
+    var store = StoreOptions.Value;
+    var brand = BrandOptions.Value;
+    var message = TempData["Message"] as string;
+    var messageType = TempData["MessageType"] as string ?? "success";
+    var currentController = (ViewContext.RouteData.Values["controller"] as string ?? string.Empty);
+
+    // A shop storefront can override the marketplace palette. The controller sets this before the
+    // layout runs (the body executes later, so a view cannot set it in time). Emitting the theme's
+    // variables inline on <html> overrides the :root block below, re-skinning the whole page.
+    var shopTheme = ViewData["ShopTheme"] as WebDS_Test.Domain.ShopTheme;
+
+    var dir = T.IsRightToLeft ? "rtl" : "ltr";
+    var currentPath = Context.Request.Path + Context.Request.QueryString;
+}
+<!DOCTYPE html>
+<html lang="@T.Culture" dir="@dir" data-lang="@T.Culture" data-shop-theme="@(shopTheme?.Key)" style="@shopTheme?.ToCssVariables()" data-store-theme="@store.Theme">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] is null ? store.Name : $"{ViewData["Title"]} · {store.Name}")</title>
+    <meta name="description" content="@store.Tagline" />
+    <meta name="theme-color" content="@(shopTheme?.Primary ?? brand.Primary)" />
+    <link rel="icon" href="~/favicon.ico" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    @* The palette is emitted from configuration, so brand colours are changed in
+       appsettings.json rather than by editing CSS. *@
+    <style>:root{@Html.Raw(brand.ToCssVariables())}</style>
+    <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shop-themes.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/themes.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/i18n.css" asp-append-version="true" />
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    @* ---- Blue utility strip: language switch, tracking and account access ---- *@
+    <div class="brand-utilitybar">
+        <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center">
+                <span class="fw-semibold">eShop</span>
+                <span class="utility-divider"></span>
+                <a asp-controller="Catalog" asp-action="Index">@T["controller.catalog"]</a>
+            </div>
+            <div class="d-flex align-items-center">
+                <a asp-controller="Orders" asp-action="Track">@T["controller.track"]</a>
+                <span class="utility-divider"></span>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <a asp-controller="Account" asp-action="Profile">@User.Identity.Name</a>
+                    <span class="utility-divider"></span>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-link btn-sm p-0 align-baseline text-white">@T["controller.signout"]</button>
+                    </form>
+                }
+                else
+                {
+                    <a asp-controller="Account" asp-action="Login">@T["controller.login"]</a>
+                }
+                <span class="utility-divider"></span>
+                @* Language switcher. A form rather than links so it works without JavaScript. *@
+                <form method="get" action="/set-language" class="d-flex align-items-center">
+                    <input type="hidden" name="returnUrl" value="@currentPath" />
+                    <label class="visually-hidden" for="langSelect">@T["language.label"]</label>
+                    <select id="langSelect" name="code" class="form-select form-select-sm language-select"
+                            onchange="this.form.submit()">
+                        @foreach (var lang in T.Supported)
+                        {
+                            <option value="@lang.Code" selected="@(lang.Code == T.Culture)">@lang.NativeName</option>
+                        }
+                    </select>
+                    <noscript><button class="btn btn-sm btn-link text-white" type="submit">@T["language.label"]</button></noscript>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @* ---- White header: logo, account link, search ---- *@
+    <header class="brand-header py-3">
+        <div class="container">
+            <div class="row align-items-center g-3">
+                <div class="col-6 col-md-3">
+                    <a asp-controller="Home" asp-action="Index" class="d-inline-flex align-items-center gap-2 text-decoration-none">
+                        @if (!string.IsNullOrWhiteSpace(brand.LogoUrl))
+                        {
+                            <img src="@brand.LogoUrl" alt="@brand.BrandName" style="height:@(brand.LogoHeight)px;" />
+                        }
+                        else
+                        {
+                            @* Text wordmark used until the official logo asset is supplied. *@
+                            <span class="brand-wordmark">
+                                <span class="wordmark-liban">Liban</span><span class="wordmark-post">Post</span>
+                            </span>
+                        }
+                    </a>
+                </div>
+
+                <div class="col-6 col-md-3 order-md-3 text-end">
+                    <a class="brand-accountlink" asp-controller="Account" asp-action="Profile">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332C3.155 11.996 3 12.75 3 13h10Z" />
+                        </svg>
+                        @(User.Identity?.IsAuthenticated == true ? "My account" : "Login/Register")
+                    </a>
+                </div>
+
+                <div class="col-12 col-md-6 order-md-2">
+                    <form class="brand-search d-flex position-relative" role="search" asp-controller="Catalog" asp-action="Index" method="get"
+                          data-suggest-url="@Url.Action("Suggest", "Catalog")">
+                        <label class="visually-hidden" for="siteSearch">@T["controller.searchLabel"]</label>
+                        <input class="form-control" id="siteSearch" type="search" name="q"
+                               value="@Context.Request.Query["q"]" placeholder="@T["controller.search"]"
+                               autocomplete="off" role="combobox" aria-expanded="false"
+                               aria-controls="searchSuggestions" aria-autocomplete="list" />
+                        <button class="btn" type="submit" aria-label="Search">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                            </svg>
+                        </button>
+                        @* Populated by site.js from the JSON suggestion endpoint. *@
+                        <div class="search-suggest" id="searchSuggestions" role="listbox" aria-label="Search suggestions" hidden></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    @* ---- Primary navigation ---- *@
+    <nav class="brand-nav">
+        <div class="container">
+            <ul class="nav flex-wrap align-items-center">
+                <li class="nav-item">
+                    <a class="nav-link @(currentController == "Catalog" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")"
+                       asp-controller="Catalog" asp-action="Index">@T["controller.catalog"]</a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">@T["controller.allDepartments"]</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" asp-controller="Catalog" asp-action="Index">@T["controller.allDepartments"]</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        @await Component.InvokeAsync("CategoryMenu")
+                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" asp-controller="Shops" asp-action="Index">@T["controller.shops"]</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(currentController == "Orders" && ViewContext.RouteData.Values["action"]?.ToString() == "Track" ? "active" : "")"
+                       asp-controller="Orders" asp-action="Track">@T["controller.track"]</a>
+                </li>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <li class="nav-item">
+                        <a class="nav-link" asp-controller="Orders" asp-action="Index">@T["controller.orders"]</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" asp-controller="Account" asp-action="Wishlist">@T["controller.wishlist"]</a>
+                    </li>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Admin</a>
+                        </li>
+                    }
+                    <li class="nav-item">
+                        <a class="nav-link" asp-area="Vendor" asp-controller="Dashboard" asp-action="Index">My shop</a>
+                    </li>
+                }
+                else
+                {
+                    <li class="nav-item">
+                        <a class="nav-link" asp-controller="Account" asp-action="Register">Register</a>
+                    </li>
+                }
+                <li class="nav-item ms-auto my-1">
+                    @await Component.InvokeAsync("CartBadge")
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mt-3">
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="alert alert-@messageType alert-dismissible fade show" role="alert">
+                @message
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+    </div>
+
+    <main role="main" class="flex-grow-1">
+        <div class="container pb-4">
+            @RenderBody()
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <span class="brand-wordmark mb-2 d-inline-flex">
+                        <span class="wordmark-liban" style="color:#fff;">Liban</span><span class="wordmark-post" style="color:var(--brand-accent);">Post</span>
+                    </span>
+                    <p class="mb-2 mt-2">@store.Tagline</p>
+                    <p class="mb-0">
+                        Questions? <a href="mailto:@store.SupportEmail">@store.SupportEmail</a>
+                    </p>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <h6>eShop</h6>
+                    <ul>
+                        <li><a asp-controller="Catalog" asp-action="Index">All products</a></li>
+                        <li><a asp-controller="Catalog" asp-action="Index" asp-route-sort="@ProductSort.BestSelling">Best sellers</a></li>
+                        <li><a asp-controller="Catalog" asp-action="Index" asp-route-inStock="true">In stock</a></li>
+                    </ul>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <h6>Your account</h6>
+                    <ul>
+                        <li><a asp-controller="Account" asp-action="Profile">My account</a></li>
+                        <li><a asp-controller="Orders" asp-action="Index">My orders</a></li>
+                        <li><a asp-controller="Orders" asp-action="Track">Track &amp; trace</a></li>
+                        <li><a asp-controller="Account" asp-action="Addresses">Address book</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-4">
+                    <h6>Delivery &amp; payment</h6>
+                    <p class="mb-1">@T.Format("controller.freeShipping", store.CurrencySymbol + store.FreeShippingThreshold.ToString("N2"))</p>
+                    <p class="mb-1">@T.Format("controller.flatShipping", store.CurrencySymbol + store.FlatShippingRate.ToString("N2"), store.DefaultCountry)</p>
+                    <p class="mb-0">@T.Format("controller.vatLine", (store.TaxRate * 100).ToString("0.##"))</p>
+                </div>
+            </div>
+            <hr class="mt-4" />
+            <div class="d-flex flex-wrap justify-content-between gap-2 footer-legal">
+                <span>&copy; @DateTime.UtcNow.Year @store.Name. @T["footer.legal"]</span>
+                <span>
+                    <a asp-controller="Home" asp-action="Privacy">@T["footer.privacy"]</a>
+                </span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

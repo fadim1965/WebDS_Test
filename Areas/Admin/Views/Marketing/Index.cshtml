@@ -1,0 +1,686 @@
+@using WebDS_Test.Areas.Admin.Models
+@using WebDS_Test.Domain
+@model MarketingDashboardStats
+@inject Microsoft.Extensions.Options.IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    var currency = StoreOptions.Value.CurrencySymbol;
+    var stats = Model;
+
+    string Money(decimal value) => currency + value.ToString("N2");
+    string Pct(double value) => value.ToString("F1") + "%";
+
+    // Revenue trend sparkline data
+    var maxDailyRev = stats.DailyRevenue.Count > 0 ? stats.DailyRevenue.Max(d => d.Revenue) : 0m;
+    var maxDailyOrders = stats.DailyRevenue.Count > 0 ? stats.DailyRevenue.Max(d => d.Orders) : 0;
+
+    var peakDay = stats.DailyRevenue.OrderByDescending(d => d.Revenue).FirstOrDefault();
+    var peakDayLabel = peakDay is not null ? peakDay.Date.ToString("ddd d MMM") : "—";
+
+    // Trend: compare last 7 days vs previous 7 days
+    var last7 = stats.DailyRevenue.TakeLast(7).Sum(d => d.Revenue);
+    var prev7 = stats.DailyRevenue.Skip(stats.DailyRevenue.Count - 14).Take(7).Sum(d => d.Revenue);
+    var trend7 = prev7 == 0 ? 0m : (last7 - prev7) / prev7 * 100m;
+
+    // Funnel math
+    var totalOrders = stats.TotalOrders;
+    var pending = stats.StatusBreakdown.FirstOrDefault(s => s.Status == OrderStatus.Pending)?.Count ?? 0;
+    var paid = stats.StatusBreakdown.FirstOrDefault(s => s.Status == OrderStatus.Paid)?.Count ?? 0;
+    var shipped = stats.StatusBreakdown.FirstOrDefault(s => s.Status == OrderStatus.Shipped)?.Count ?? 0;
+    var delivered = stats.StatusBreakdown.FirstOrDefault(s => s.Status == OrderStatus.Delivered)?.Count ?? 0;
+    var cancelled = stats.StatusBreakdown.FirstOrDefault(s => s.Status == OrderStatus.Cancelled)?.Count ?? 0;
+    var refunded = stats.StatusBreakdown.FirstOrDefault(s => s.Status == OrderStatus.Refunded)?.Count ?? 0;
+
+    var conversionFunnel = totalOrders > 0
+        ? new[] {
+            (Label: "Placed", Count: totalOrders, Pct: 100.0),
+            (Label: "Paid", Count: paid, Pct: totalOrders > 0 ? (double)paid / totalOrders * 100 : 0),
+            (Label: "Shipped", Count: shipped, Pct: totalOrders > 0 ? (double)shipped / totalOrders * 100 : 0),
+            (Label: "Delivered", Count: delivered, Pct: totalOrders > 0 ? (double)delivered / totalOrders * 100 : 0)
+        }
+        : Array.Empty<(string Label, int Count, double Pct)>();
+
+    string RankBadge(int i) => i switch
+    {
+        0 => "<span class=\"rank-badge gold\">1</span>",
+        1 => "<span class=\"rank-badge silver\">2</span>",
+        2 => "<span class=\"rank-badge bronze\">3</span>",
+        _ => "<span class=\"rank-badge plain\">" + (i + 1) + "</span>"
+    };
+}
+
+@{
+    ViewData["Title"] = "Marketing dashboard";
+}
+
+@* ============ Page header ============ *@
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Marketing dashboard</h1>
+        <p class="text-muted mb-0">Revenue trend, best sellers, category mix, order funnel and customer acquisition.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary btn-sm" asp-area="Admin" asp-controller="Orders" asp-action="Index">All orders</a>
+        <a class="btn btn-outline-primary btn-sm" asp-area="Admin" asp-controller="Products" asp-action="Index">Product catalogue</a>
+    </div>
+</div>
+
+@* ============ KPI row ============ *@
+<div class="kpi-row mb-3">
+    <div class="kpi">
+        <div class="kpi-value">@Money(stats.TotalRevenue)</div>
+        <div class="kpi-label">Total revenue</div>
+        <div class="kpi-delta @(trend7 >= 0 ? "up" : "down")">
+            @(trend7 >= 0 ? "+" : "")@Pct((double)trend7) last 7 days vs previous
+        </div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-value">@stats.TotalOrders</div>
+        <div class="kpi-label">Total orders</div>
+        <div class="kpi-delta neutral">
+            @stats.OrdersLast30Days in the last 30 days
+        </div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-value">@Money(stats.AverageOrderValue)</div>
+        <div class="kpi-label">Average order value</div>
+        <div class="kpi-delta neutral">
+            @Money(stats.AverageOrderValueLast30Days) last 30 days
+        </div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-value">@Pct((double)stats.CancellationRate)</div>
+        <div class="kpi-label">Cancellation rate</div>
+        <div class="kpi-delta neutral">
+            @Pct((double)stats.RefundRate) refunded
+        </div>
+    </div>
+</div>
+
+@* ============ Revenue trend ============ *@
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="section-icon">📈</span>
+            <span class="fw-semibold">Revenue trend · last 30 days</span>
+        </div>
+        <div class="text-end">
+            <div class="fw-semibold">@Money(stats.RevenueLast30Days)</div>
+            <div class="small text-muted">@stats.OrdersLast30Days orders</div>
+        </div>
+        <div class="d-flex gap-1">
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="daily-revenue" asp-route-format="csv">CSV</a>
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="daily-revenue" asp-route-format="xlsx">Excel</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <div class="sparkline" id="revenueSparkline" aria-label="Daily revenue trend">
+                    @foreach (var day in stats.DailyRevenue)
+                    {
+                        var pct = maxDailyRev > 0 ? (double)day.Revenue / (double)maxDailyRev * 100 : 0;
+                        var isPeak = peakDay is not null && day.Date == peakDay.Date && day.Revenue > 0;
+                        <div class="sparkline-bar @(isPeak ? "is-peak" : "")"
+                             style="height:@(pct)%;"
+                             role="gridcell"
+                             aria-label="@(day.Date.ToString("ddd d MMM")): @Money(day.Revenue), @day.Orders orders">
+                            <div class="sparkline-tooltip">
+                                @day.Date.ToString("ddd d MMM") — @Money(day.Revenue) (@day.Orders orders)
+                            </div>
+                        </div>
+                    }
+                    @if (stats.DailyRevenue.Count == 0)
+                    {
+                        <div class="empty-state" style="padding:0;height:40px;">
+                            <span class="text-muted small">No revenue recorded yet.</span>
+                        </div>
+                    }
+                </div>
+                <div class="mini-bar-axis mt-2">
+                    @for (int i = 0; i < stats.DailyRevenue.Count; i += 4)
+                    {
+                        var day = stats.DailyRevenue[i];
+                        <span style="flex:1;text-align:@(i == stats.DailyRevenue.Count - 1 ? "end" : "start");">
+                            @day.Date.ToString("d MMM")
+                        </span>
+                    }
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex justify-content-between align-items-start p-2 rounded border" style="background:var(--brand-surface-muted);">
+                        <div>
+                            <div class="fw-semibold">Peak day</div>
+                            <div class="small text-muted">@peakDayLabel</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-semibold">@Money(peakDay?.Revenue ?? 0m)</div>
+                            <div class="small text-muted">@(peakDay?.Orders ?? 0) orders</div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-start p-2 rounded border" style="background:var(--brand-surface-muted);">
+                        <div>
+                            <div class="fw-semibold">Best 7-day window</div>
+                            <div class="small text-muted">@Money(last7)</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-semibold @(trend7 >= 0 ? "text-success" : "text-danger")">
+                                @(trend7 >= 0 ? "+" : "")@Pct(Math.Abs((double)trend7))
+                            </div>
+                            <div class="small text-muted">vs previous 7 days</div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-start p-2 rounded border" style="background:var(--brand-surface-muted);">
+                        <div>
+                            <div class="fw-semibold">AOV (30 days)</div>
+                            <div class="small text-muted">Average order value</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-semibold">@Money(stats.AverageOrderValueLast30Days)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ============ Order funnel ============ *@
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span class="section-icon">🔄</span>
+        <span class="fw-semibold">Order funnel</span>
+    </div>
+    <div class="card-body">
+        <div class="funnel">
+            @if (conversionFunnel.Any())
+            {
+                for (var i = 0; i < conversionFunnel.Length; i++)
+                {
+                    var step = conversionFunnel[i];
+                    var isLast = i == conversionFunnel.Length - 1;
+                    <div class="funnel-step">
+                        <div class="step-number">@step.Count</div>
+                        <div class="step-label">@step.Label</div>
+                        <div class="step-meta">@Pct(step.Pct) of placed</div>
+                    </div>
+                    @if (!isLast)
+                    {
+                        <div class="funnel-arrow">▸</div>
+                    }
+                }
+            }
+            else
+            {
+                <div class="empty-state" style="padding:1rem;">
+                    <span class="empty-icon">📭</span>
+                    <div class="text-muted small">No orders placed yet.</div>
+                </div>
+            }
+        </div>
+        <div class="mt-3">
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted small">Cancel rate</span>
+                <span class="fw-semibold @(stats.CancellationRate > 5 ? "text-danger" : "text-muted")">@Pct((double)stats.CancellationRate)</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="text-muted small">Refund rate</span>
+                <span class="fw-semibold @(stats.RefundRate > 2 ? "text-danger" : "text-muted")">@Pct((double)stats.RefundRate)</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ============ Status breakdown ============ *@
+<div class="row g-3 mb-4">
+    @foreach (var s in stats.StatusBreakdown)
+    {
+        <div class="col-6 col-md-3">
+            <div class="dashboard-stat">
+                <div class="stat-head">
+                    <div>
+                        <div class="stat-label">@s.Label</div>
+                        <div class="stat-value">@s.Count</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-semibold">@Money(s.Revenue)</div>
+                        <div class="small text-muted">@s.Count orders</div>
+                    </div>
+                </div>
+                <div class="stat-trend @(s.Status == OrderStatus.Cancelled || s.Status == OrderStatus.Refunded ? "trend-down" : "trend-neutral")">
+                    <span>@Pct(stats.TotalOrders > 0 ? (double)s.Count / stats.TotalOrders * 100 : 0) of orders</span>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@* ============ Top products ============ *@
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card marketing-table mb-0">
+            <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="section-icon">🏆</span>
+                    <span class="fw-semibold">Top products by revenue</span>
+                </div>
+                <div class="d-flex gap-1">
+                    <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="top-products-revenue" asp-route-format="csv">CSV</a>
+                    <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="top-products-revenue" asp-route-format="xlsx">Excel</a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width:2.5rem;">#</th>
+                            <th scope="col">Product</th>
+                            <th scope="col" class="text-end">SKU</th>
+                            <th scope="col" class="text-end">Units</th>
+                            <th scope="col" class="text-end">Orders</th>
+                            <th scope="col" class="text-end">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < stats.TopProductsByRevenue.Count; i++)
+                        {
+                            var p = stats.TopProductsByRevenue[i];
+                            <tr>
+                                <td>@Html.Raw(RankBadge(i))</td>
+                                <td>
+                                    <div class="fw-semibold">@p.Name</div>
+                                    <div class="small text-muted">@p.Category</div>
+                                </td>
+                                <td class="text-end"><code class="small">@p.Sku</code></td>
+                                <td class="text-end">@p.Units</td>
+                                <td class="text-end">@p.Orders</td>
+                                <td class="text-end fw-semibold">@Money(p.Revenue)</td>
+                            </tr>
+                        }
+                        @if (!stats.TopProductsByRevenue.Any())
+                        {
+                            <tr><td colspan="6" class="text-muted text-center py-3">No completed orders yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card marketing-table mb-0">
+            <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="section-icon">📦</span>
+                    <span class="fw-semibold">Top products by units sold</span>
+                </div>
+                <div class="d-flex gap-1">
+                    <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="top-products-units" asp-route-format="csv">CSV</a>
+                    <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="top-products-units" asp-route-format="xlsx">Excel</a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width:2.5rem;">#</th>
+                            <th scope="col">Product</th>
+                            <th scope="col" class="text-end">SKU</th>
+                            <th scope="col" class="text-end">Units</th>
+                            <th scope="col" class="text-end">Orders</th>
+                            <th scope="col" class="text-end">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < stats.TopProductsByUnits.Count; i++)
+                        {
+                            var p = stats.TopProductsByUnits[i];
+                            <tr>
+                                <td>@Html.Raw(RankBadge(i))</td>
+                                <td>
+                                    <div class="fw-semibold">@p.Name</div>
+                                    <div class="small text-muted">@p.Category</div>
+                                </td>
+                                <td class="text-end"><code class="small">@p.Sku</code></td>
+                                <td class="text-end">@p.Units</td>
+                                <td class="text-end">@p.Orders</td>
+                                <td class="text-end fw-semibold">@Money(p.Revenue)</td>
+                            </tr>
+                        }
+                        @if (!stats.TopProductsByUnits.Any())
+                        {
+                            <tr><td colspan="6" class="text-muted text-center py-3">No completed orders yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ============ Revenue by category ============ *@
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="section-icon">📂</span>
+            <span class="fw-semibold">Revenue by category</span>
+        </div>
+        <div class="d-flex gap-1">
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="revenue-by-category" asp-route-format="csv">CSV</a>
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="revenue-by-category" asp-route-format="xlsx">Excel</a>
+        </div>
+        <a class="small" asp-area="Admin" asp-controller="Catalog" asp-action="Index">Manage catalogue</a>
+    </div>
+    <div class="card-body">
+        @if (stats.RevenueByCategory.Any())
+        {
+            <div class="mini-bar">
+                @foreach (var cat in stats.RevenueByCategory)
+                {
+                    var pct = stats.RevenueByCategory.Max(c => c.Revenue) > 0
+                        ? (double)cat.Revenue / (double)stats.RevenueByCategory.Max(c => c.Revenue) * 100
+                        : 0;
+                    var isPeak = cat.Revenue == stats.RevenueByCategory.Max(c => c.Revenue);
+                    <div class="mini-bar-column @(isPeak ? "is-peak" : "")" style="height:@pct%;">
+                        <label>@cat.Name</label>
+                    </div>
+                }
+            </div>
+            <div class="mini-bar-axis">
+                @foreach (var cat in stats.RevenueByCategory)
+                {
+                    <span style="flex:1;">@cat.Name</span>
+                }
+            </div>
+            <div class="table-responsive mt-3">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Category</th>
+                            <th scope="col" class="text-end">Products</th>
+                            <th scope="col" class="text-end">Units</th>
+                            <th scope="col" class="text-end">Orders</th>
+                            <th scope="col" class="text-end">Revenue</th>
+                            <th scope="col" class="text-end">Share</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cat in stats.RevenueByCategory)
+                        {
+                            var share = stats.TotalRevenue > 0 ? (double)cat.Revenue / (double)stats.TotalRevenue * 100 : 0;
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@cat.Name</div>
+                                    <div class="small text-muted">@cat.Products product@(cat.Products == 1 ? "" : "s")</div>
+                                </td>
+                                <td class="text-end">@cat.Products</td>
+                                <td class="text-end">@cat.Units</td>
+                                <td class="text-end">@cat.Orders</td>
+                                <td class="text-end fw-semibold">@Money(cat.Revenue)</td>
+                                <td class="text-end">@Pct(share)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <span class="empty-icon">📂</span>
+                <div class="text-muted small">No category sales recorded yet.</div>
+            </div>
+        }
+    </div>
+</div>
+
+@* ============ Customers ============ *@
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="dashboard-stat h-100">
+            <div class="stat-head">
+                <div>
+                    <div class="stat-label">New customers (30 days)</div>
+                    <div class="stat-value">@stats.NewCustomersLast30Days</div>
+                </div>
+                <div class="text-end">
+                    <div class="fw-semibold">@stats.ReturningCustomersLast30Days</div>
+                    <div class="small text-muted">returning customers</div>
+                </div>
+            </div>
+            <div class="stat-trend trend-neutral">
+                <span>@stats.TopCustomers.Count active customers</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card marketing-table h-100">
+            <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="section-icon">👥</span>
+                    <span class="fw-semibold">Top customers by spend</span>
+                </div>
+                <div class="d-flex gap-1">
+                    <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="top-customers" asp-route-format="csv">CSV</a>
+                    <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="top-customers" asp-route-format="xlsx">Excel</a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width:2.5rem;">#</th>
+                            <th scope="col">Customer</th>
+                            <th scope="col" class="text-end">Orders</th>
+                            <th scope="col" class="text-end">Spend</th>
+                            <th scope="col">Last order</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < stats.TopCustomers.Count; i++)
+                        {
+                            var c = stats.TopCustomers[i];
+                            <tr>
+                                <td>@Html.Raw(RankBadge(i))</td>
+                                <td>
+                                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(c.Name) ? c.Email : c.Name)</div>
+                                    <div class="small text-muted">@c.Email</div>
+                                </td>
+                                <td class="text-end">@c.Orders</td>
+                                <td class="text-end fw-semibold">@Money(c.Spend)</td>
+                                <td class="text-end small text-muted">
+                                    @(c.LastOrder.HasValue ? c.LastOrder.Value.ToString("d MMM yyyy") : "—")
+                                </td>
+                            </tr>
+                        }
+                        @if (!stats.TopCustomers.Any())
+                        {
+                            <tr><td colspan="5" class="text-muted text-center py-3">No customer orders yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ============ Payment methods ============ *@
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <div class="d-flex align-items-center gap-2">
+        <span class="section-icon">💳</span>
+        <span class="fw-semibold">Payment methods</span>
+    </div>
+    <div class="d-flex gap-1">
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="payment-methods" asp-route-format="csv">CSV</a>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="payment-methods" asp-route-format="xlsx">Excel</a>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    @foreach (var pm in stats.PaymentMethods)
+    {
+        var share = stats.TotalRevenue > 0 ? (double)pm.RevenueRaw / (double)stats.TotalRevenue * 100 : 0;
+        <div class="col-md-4">
+            <div class="dashboard-stat">
+                <div class="stat-head">
+                    <div>
+                        <div class="stat-label">@pm.Label</div>
+                        <div class="stat-value">@pm.Orders</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-semibold">@Money(pm.RevenueRaw)</div>
+                        <div class="small text-muted">@Pct(share) of revenue</div>
+                    </div>
+                </div>
+                <div class="stat-trend trend-neutral">
+                    <span>@pm.Orders orders</span>
+                </div>
+            </div>
+        </div>
+    }
+    @if (!stats.PaymentMethods.Any())
+    {
+        <div class="col-12">
+            <div class="empty-state">
+                <span class="empty-icon">💳</span>
+                <div class="text-muted small">No payment data yet.</div>
+            </div>
+        </div>
+    }
+</div>
+
+@* ============ Coupon performance ============ *@
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="section-icon">🎫</span>
+            <span class="fw-semibold">Coupon performance</span>
+        </div>
+        <div class="d-flex gap-1">
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="coupons" asp-route-format="csv">CSV</a>
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="coupons" asp-route-format="xlsx">Excel</a>
+        </div>
+        <a class="small" asp-area="Admin" asp-controller="Coupons" asp-action="Index">Manage coupons</a>
+    </div>
+    <div class="card-body">
+        @if (stats.CouponPerformance.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Code</th>
+                            <th scope="col" class="text-end">Uses</th>
+                            <th scope="col" class="text-end">Redemption</th>
+                            <th scope="col" class="text-end">Discount given</th>
+                            <th scope="col" class="text-end">Influenced revenue</th>
+                            <th scope="col" class="text-end">Avg order</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in stats.CouponPerformance)
+                        {
+                            var avgOrder = c.Uses.Count > 0 ? c.InfluencedRevenue / c.Uses.Count : 0m;
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@c.Code</div>
+                                    <div class="small text-muted">@c.MaxUses max uses</div>
+                                </td>
+                                <td class="text-end">@c.UsedCount</td>
+                                <td class="text-end">@Pct(c.RedemptionRate)</td>
+                                <td class="text-end">@Money(c.DiscountGiven)</td>
+                                <td class="text-end fw-semibold">@Money(c.InfluencedRevenue)</td>
+                                <td class="text-end">@Money(avgOrder)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <span class="empty-icon">🎫</span>
+                <div class="text-muted small">No coupon usage recorded yet.</div>
+            </div>
+        }
+    </div>
+</div>
+
+@* ============ Fast moving ============ *@
+<div class="card">
+    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="section-icon">🚀</span>
+            <span class="fw-semibold">Fast-moving variants</span>
+        </div>
+        <div class="d-flex gap-1">
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="fast-moving" asp-route-format="csv">CSV</a>
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Export" asp-route-section="fast-moving" asp-route-format="xlsx">Excel</a>
+        </div>
+        <a class="small" asp-area="Admin" asp-controller="Inventory" asp-action="Index">Manage inventory</a>
+    </div>
+    <div class="card-body">
+        @if (stats.FastMoving.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Product</th>
+                            <th scope="col" class="text-end">SKU</th>
+                            <th scope="col" class="text-end">Units</th>
+                            <th scope="col" class="text-end">Orders</th>
+                            <th scope="col" class="text-end">Stock left</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in stats.FastMoving)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">@f.ProductName</div>
+                                </td>
+                                <td class="text-end"><code class="small">@f.VariantSku</code></td>
+                                <td class="text-end">@f.Units</td>
+                                <td class="text-end">@f.Orders</td>
+                                <td class="text-end">
+                                    @if (f.LowStock)
+                                    {
+                                        <span class="badge text-bg-warning">@f.StockRemaining</span>
+                                    }
+                                    else
+                                    {
+                                        @f.StockRemaining
+                                    }
+                                </td>
+                                <td>
+                                    @if (f.LowStock)
+                                    {
+                                        <span class="badge text-bg-warning">Low stock</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge text-bg-success">Healthy</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <span class="empty-icon">🚀</span>
+                <div class="text-muted small">No fast-moving variants yet.</div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // No additional scripts required: sparklines and mini-bars are pure CSS.
+    </script>
+}

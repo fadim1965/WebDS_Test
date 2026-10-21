@@ -1,0 +1,131 @@
+@model IReadOnlyList<WishlistItem>
+@using Microsoft.Extensions.Options
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    ViewData["Title"] = "Your wishlist";
+
+    var currency = StoreOptions.Value.CurrencySymbol;
+    var entries = Model ?? Array.Empty<WishlistItem>();
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Your wishlist</h1>
+        <p class="text-muted small mb-0">Products you saved for later. Prices and stock are always current.</p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-controller="Catalog" asp-action="Index">Keep shopping</a>
+</div>
+
+@if (entries.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <h2 class="h5">Your wishlist is empty</h2>
+            <p class="text-muted mb-3">
+                Tap “Save to wishlist” on any product page and it will show up here.
+            </p>
+            <a class="btn btn-primary" asp-controller="Catalog" asp-action="Index">Browse the catalogue</a>
+        </div>
+    </div>
+}
+else
+{
+    <p class="text-muted small">@entries.Count saved product@(entries.Count == 1 ? string.Empty : "s").</p>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+        @foreach (var entry in entries)
+        {
+            var product = entry.Product;
+            if (product is null)
+            {
+                continue;
+            }
+
+            var image = product.Images
+                .OrderByDescending(i => i.IsPrimary)
+                .ThenBy(i => i.DisplayOrder)
+                .FirstOrDefault();
+            var sellable = product.Variants
+                .Where(v => v.IsActive && v.StockQuantity > 0)
+                .OrderBy(v => v.Price)
+                .FirstOrDefault();
+            var activePrices = product.Variants.Where(v => v.IsActive).Select(v => v.Price).ToList();
+            var price = activePrices.Count > 0 ? activePrices.Min() : product.DisplayPrice;
+
+            <div class="col">
+                <div class="card card-hover h-100">
+                    <a asp-controller="Products" asp-action="Details" asp-route-slug="@product.Slug" class="text-decoration-none">
+                        <div class="product-thumb">
+                            @if (image is not null && !string.IsNullOrEmpty(image.Url))
+                            {
+                                <img src="@image.Url" alt="@(image.AltText ?? product.Name)" loading="lazy" />
+                            }
+                            else
+                            {
+                                <div class="d-flex align-items-center justify-content-center h-100 text-muted">No image</div>
+                            }
+
+                            <div class="thumb-badges">
+                                @if (product.IsFeatured)
+                                {
+                                    <span class="badge text-bg-warning">Featured</span>
+                                }
+                            </div>
+
+                            @if (sellable is null)
+                            {
+                                <div class="stock-ribbon">Out of stock</div>
+                            }
+                        </div>
+                    </a>
+
+                    <div class="card-body d-flex flex-column">
+                        <div class="small text-muted mb-1">@(product.Category?.Name ?? "Product")</div>
+
+                        <a asp-controller="Products" asp-action="Details" asp-route-slug="@product.Slug" class="text-decoration-none">
+                            <h2 class="product-title mb-2">@product.Name</h2>
+                        </a>
+
+                        @if (!string.IsNullOrWhiteSpace(product.ShortDescription))
+                        {
+                            <p class="small text-muted text-truncate-2 mb-2">@product.ShortDescription</p>
+                        }
+
+                        <div class="mt-auto">
+                            <div class="d-flex align-items-baseline gap-2 mb-1">
+                                <span class="price-now">@currency@price.ToString("N2")</span>
+                                @if (product.HasPriceRange)
+                                {
+                                    <span class="small text-muted">and up</span>
+                                }
+                            </div>
+
+                            <div class="small text-muted mb-2">Saved @entry.AddedUtc.ToString("d MMM yyyy")</div>
+
+                            @if (sellable is not null)
+                            {
+                                <form method="post" asp-controller="Cart" asp-action="Add" class="d-grid gap-2">
+                                    <input type="hidden" name="variantId" value="@sellable.Id" />
+                                    <input type="hidden" name="quantity" value="1" />
+                                    <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+                                    <button class="btn btn-primary btn-sm" type="submit">Add to cart</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <div class="alert alert-warning small py-2 px-2 mb-0" role="alert">
+                                    Currently out of stock — check back soon.
+                                </div>
+                            }
+
+                            <a class="btn btn-outline-primary btn-sm w-100 mt-2"
+                               asp-controller="Products" asp-action="Details" asp-route-slug="@product.Slug">
+                                View details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

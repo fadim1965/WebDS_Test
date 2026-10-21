@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>WebDS_Test.Tests</RootNamespace>
+    <!-- The web project is the application under test; it is an Exe, which is fine to reference. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Every version here is pinned to what exists in ~/.nuget/packages; nuget.org is
+         unreachable from this machine. See docs/ECOMMERCE_PLAN.md. -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector" Version="6.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <!-- The store's services take an ApplicationDbContext; InMemory lets them be exercised without
+         a database. It is deliberately not the SQLite provider: these tests assert application
+         behaviour, not provider behaviour, and never open a file. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
+    <PackageReference Include="Moq" Version="4.20.70" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WebDS_Test.csproj" />
+    <!-- The application is ASP.NET Core MVC; a few of its contracts (IFormFile and friends) come
+         from the shared framework, so the test host needs it too. No NuGet package is involved. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <!--
+    VSTest has two ways to start its test host: the per-platform app host (testhost.exe) when it is
+    present, and the portable `dotnet exec testhost.dll` when it is not (that is how it runs on
+    Linux/macOS).
+
+    On this machine the sandbox denies testhost.exe the right to open a handle to its parent process
+    (OpenProcess -> Win32Exception "Access is denied"), and TestPlatform treats that as fatal inside
+    its parent-watch setup, so the host dies before a single test runs. The .NET muxer is not under
+    the same restriction: running the identical testhost.dll through `dotnet` gets past that point.
+    Removing the app host after build therefore makes `dotnet test` work here, and it keeps working
+    everywhere else because the fallback is VSTest's own supported code path.
+
+    Set -p:RemoveTestHostAppHost=false to keep the standard Windows app host (for example when
+    driving the suite from Visual Studio's Test Explorer).
+  -->
+  <PropertyGroup>
+    <RemoveTestHostAppHost Condition="'$(RemoveTestHostAppHost)' == ''">true</RemoveTestHostAppHost>
+  </PropertyGroup>
+  <Target Name="RemoveTestHostAppHost" AfterTargets="Build" Condition="'$(RemoveTestHostAppHost)' == 'true'">
+    <Delete Files="$(TargetDir)testhost.exe" />
+  </Target>
+
+</Project>

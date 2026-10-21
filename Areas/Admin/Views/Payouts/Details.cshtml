@@ -1,0 +1,129 @@
+@model WebDS_Test.Areas.Admin.Models.AdminPayoutDetailViewModel
+@{
+    ViewData["Title"] = $"Payout {Model.Payout.Reference}";
+    var payout = Model.Payout;
+}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h4 mb-1">Payout @payout.Reference
+                <span class="badge @payout.Status.ToCssClass() fs-6 align-middle">@payout.Status.ToDisplay()</span>
+            </h1>
+            <p class="text-muted mb-0">
+                @(payout.Shop?.Name ?? "(shop removed)")
+                &middot; paid @payout.CreatedUtc.ToString("yyyy-MM-dd HH:mm") UTC
+                &middot; @payout.Method
+                @if (!string.IsNullOrWhiteSpace(payout.CreatedBy))
+                {
+                    <text>&middot; by @payout.CreatedBy</text>
+                }
+                @if (payout.Status == PayoutStatus.Failed)
+                {
+                    <span>&middot; failed @payout.FailedUtc?.ToString("yyyy-MM-dd HH:mm") — @payout.FailureReason</span>
+                }
+                @if (payout.Status == PayoutStatus.Reversed)
+                {
+                    <span>&middot; reversed @payout.ReversedUtc?.ToString("yyyy-MM-dd HH:mm")</span>
+                }
+            </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary btn-sm"
+               asp-action="Statement" asp-route-id="@payout.Id" asp-route-format="csv">Statement CSV</a>
+            <a class="btn btn-outline-secondary btn-sm"
+               asp-action="Statement" asp-route-id="@payout.Id" asp-route-format="excel">Statement Excel</a>
+            <a class="btn btn-outline-primary btn-sm" asp-action="Index">All payouts</a>
+        </div>
+    </div>
+
+    @if (payout.Status == PayoutStatus.Paid)
+    {
+        <div class="card border-warning-subtle mt-2">
+            <div class="card-body py-2">
+                <div class="d-flex flex-wrap gap-3 align-items-center">
+                    <div class="small text-muted flex-grow-1">
+                        Wrong entry? The bank refused it? Mark it failed or reversed — the ledger
+                        entries it settled go back to the shop's balance, and the statement keeps its totals.
+                    </div>
+                    <form asp-action="MarkFailed" method="post" class="d-flex gap-2 align-items-end">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@payout.Id" />
+                        <div>
+                            <label class="form-label small mb-1" for="failReason">Failure reason</label>
+                            <input id="failReason" name="reason" class="form-control form-control-sm" required
+                                   placeholder="e.g. IBAN rejected by the bank" style="min-width:18rem;" />
+                        </div>
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Mark failed</button>
+                    </form>
+                    <form asp-action="Reverse" method="post" class="d-flex gap-2 align-items-end">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@payout.Id" />
+                        <div>
+                            <label class="form-label small mb-1" for="reverseNote">Note (optional)</label>
+                            <input id="reverseNote" name="note" class="form-control form-control-sm"
+                                   placeholder="e.g. duplicate entry" style="min-width:14rem;" />
+                        </div>
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Reverse</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="row g-3 mt-2">
+        <div class="col-md-3"><div class="card"><div class="card-body">
+            <div class="text-muted small">Ledger entries</div><div class="h4 mb-0">@payout.EntryCount</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body">
+            <div class="text-muted small">Gross</div><div class="h4 mb-0">@Model.Currency@payout.GrossAmount.ToString("N2")</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body">
+            <div class="text-muted small">Commission</div><div class="h4 mb-0">@Model.Currency@payout.CommissionAmount.ToString("N2")</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card border-success"><div class="card-body">
+            <div class="text-muted small">Net paid</div><div class="h4 mb-0">@Model.Currency@payout.NetAmount.ToString("N2")</div>
+        </div></div></div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(payout.Note))
+    {
+        <div class="alert alert-light border mt-3 mb-0">@payout.Note</div>
+    }
+
+    <div class="card mt-3">
+        <div class="card-header">
+            Statement lines
+            <span class="text-muted small">— earnings from @payout.PeriodStartUtc.ToString("yyyy-MM-dd") to @payout.PeriodEndUtc.ToString("yyyy-MM-dd") UTC</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Entry</th><th>Earned (UTC)</th><th>Type</th><th>Order</th>
+                        <th class="text-end">Gross</th><th class="text-end">Commission</th>
+                        <th class="text-end">Net</th><th>Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Lines.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-muted">This statement has no lines.</td></tr>
+                }
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td>#@line.Id</td>
+                        <td>@line.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@line.Type</td>
+                        <td>@(line.OrderId?.ToString() ?? "—")</td>
+                        <td class="text-end">@Model.Currency@line.GrossAmount.ToString("N2")</td>
+                        <td class="text-end">@Model.Currency@line.CommissionAmount.ToString("N2")</td>
+                        <td class="text-end">@Model.Currency@line.NetAmount.ToString("N2")</td>
+                        <td class="text-muted small">@line.Note</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>

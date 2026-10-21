@@ -1,0 +1,323 @@
+@model CatalogViewModel
+@using System.Globalization
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using Microsoft.Extensions.Options
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@functions {
+    /* Flattens the category tree into select items, indenting children so the hierarchy reads. */
+    private static void AppendCategoryOptions(
+        List<SelectListItem> target,
+        IEnumerable<Category> nodes,
+        int depth,
+        string? selectedSlug)
+    {
+        foreach (var node in nodes)
+        {
+            target.Add(new SelectListItem
+            {
+                Text = (depth == 0 ? string.Empty : new string('\u00A0', depth * 4)) + node.Name,
+                Value = node.Slug,
+                Selected = string.Equals(node.Slug, selectedSlug, StringComparison.Ordinal)
+            });
+
+            AppendCategoryOptions(target, node.Children, depth + 1, selectedSlug);
+        }
+    }
+}
+@{
+    ViewData["Title"] = Model.Heading;
+
+    var store = StoreOptions.Value;
+    var currency = store.CurrencySymbol;
+    var query = Model.Query;
+    var results = Model.Results;
+
+    var currentDescription = Model.CurrentCategory?.Description;
+
+    // Pre-shaped for rendering so the breadcrumb markup stays free of code statements.
+    var breadcrumb = Model.Breadcrumb
+        .Select((crumb, index) => new
+        {
+            crumb.Name,
+            crumb.Slug,
+            IsLast = index == Model.Breadcrumb.Count - 1
+        })
+        .ToList();
+
+    var categoryOptions = new List<SelectListItem>();
+    AppendCategoryOptions(categoryOptions, Model.Categories, 0, query.CategorySlug);
+
+    var brandOptions = Model.Brands
+        .Select(brand => new SelectListItem(
+            brand,
+            brand,
+            string.Equals(brand, query.Brand, StringComparison.OrdinalIgnoreCase)))
+        .ToList();
+
+    // Sort labels come from ProductSortExtensions so the dropdown and the service agree on wording.
+    var sortOptions = Enum.GetValues<ProductSort>()
+        .Select(sort => new SelectListItem(
+            sort.ToDisplay(),
+            ((int)sort).ToString(CultureInfo.InvariantCulture),
+            sort == query.Sort))
+        .ToList();
+
+    // Pre-formatted so the pager can echo the active filters back as query-string values.
+    var minPriceValue = query.MinPrice?.ToString("0.00", CultureInfo.InvariantCulture) ?? string.Empty;
+    var maxPriceValue = query.MaxPrice?.ToString("0.00", CultureInfo.InvariantCulture) ?? string.Empty;
+    var minPricePlaceholder = Model.PriceBounds.Min.ToString("0.00", CultureInfo.InvariantCulture);
+    var maxPricePlaceholder = Model.PriceBounds.Max.ToString("0.00", CultureInfo.InvariantCulture);
+
+    var currentPage = results.Page;
+    var lastPage = results.TotalPages;
+    var windowStart = Math.Max(1, currentPage - 3);
+    var windowEnd = Math.Min(lastPage, windowStart + 6);
+    windowStart = Math.Max(1, windowEnd - 6);
+}
+
+<div class="row g-4">
+    <aside class="col-lg-3">
+        <form class="filter-panel p-3" method="get" asp-controller="Catalog" asp-action="Index">
+            <h2 class="h6 text-uppercase text-muted mb-3">Filter products</h2>
+
+            <div class="mb-3">
+                <label class="form-label" for="filterSearch">Search</label>
+                <input class="form-control" id="filterSearch" name="q" type="search"
+                       value="@query.Search" placeholder="Name, brand or SKU" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="filterCategory">Category</label>
+                <select class="form-select" id="filterCategory" name="category" asp-items="categoryOptions">
+                    <option value="">All categories</option>
+                </select>
+            </div>
+
+            <fieldset class="mb-3">
+                <legend class="form-label float-none">Price range</legend>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small mb-1" for="filterMinPrice">Min</label>
+                        <input class="form-control" id="filterMinPrice" name="minPrice" type="number"
+                               min="0" step="0.01" inputmode="decimal"
+                               value="@minPriceValue" placeholder="@minPricePlaceholder" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small mb-1" for="filterMaxPrice">Max</label>
+                        <input class="form-control" id="filterMaxPrice" name="maxPrice" type="number"
+                               min="0" step="0.01" inputmode="decimal"
+                               value="@maxPriceValue" placeholder="@maxPricePlaceholder" />
+                    </div>
+                </div>
+                @if (Model.PriceBounds.HasRange)
+                {
+                    <p class="form-text mb-0">
+                        Catalogue range @currency@Model.PriceBounds.Min.ToString("N2")
+                        – @currency@Model.PriceBounds.Max.ToString("N2")
+                    </p>
+                }
+            </fieldset>
+
+            <div class="mb-3">
+                <label class="form-label" for="filterBrand">Brand</label>
+                <select class="form-select" id="filterBrand" name="brand" asp-items="brandOptions">
+                    <option value="">All brands</option>
+                </select>
+            </div>
+
+            <fieldset class="mb-3">
+                <legend class="form-label float-none">Customer rating</legend>
+                @{
+                    var ratingChoices = new[]
+                    {
+                        (Value: string.Empty, Label: "Any rating"),
+                        (Value: "5", Label: "5 stars only"),
+                        (Value: "4", Label: "4 stars & up"),
+                        (Value: "3", Label: "3 stars & up"),
+                        (Value: "2", Label: "2 stars & up")
+                    };
+                    var selectedRating = query.MinRating?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+                }
+                @foreach (var choice in ratingChoices)
+                {
+                    var id = choice.Value.Length == 0 ? "ratingAny" : $"rating{choice.Value}";
+                    var isSelected = string.Equals(selectedRating, choice.Value, StringComparison.Ordinal);
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="minRating" id="@id"
+                               value="@choice.Value" checked="@isSelected" />
+                        <label class="form-check-label" for="@id">
+                            @if (choice.Value.Length > 0)
+                            {
+                                <span class="star-rating star-rating-sm" aria-hidden="true">
+                                    <span class="star-rating-base">★★★★★</span>
+                                    <span class="star-rating-fill" style="width:@(int.Parse(choice.Value, CultureInfo.InvariantCulture) * 20)%">★★★★★</span>
+                                </span>
+                            }
+                            <span class="ms-1">@choice.Label</span>
+                        </label>
+                    </div>
+                }
+            </fieldset>
+
+            <div class="mb-3">
+                <label class="form-label" for="filterSort">Sort by</label>
+                <select class="form-select" id="filterSort" name="sort" asp-items="sortOptions"></select>
+            </div>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="filterInStock" name="inStock"
+                       value="true" checked="@query.InStockOnly" />
+                <label class="form-check-label" for="filterInStock">In stock only</label>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button class="btn btn-primary" type="submit">Apply filters</button>
+                <a class="btn btn-outline-secondary" asp-controller="Catalog" asp-action="Index">Clear filters</a>
+            </div>
+        </form>
+    </aside>
+
+    <div class="col-lg-9">
+        <nav aria-label="Breadcrumb">
+            <ol class="breadcrumb mb-1">
+                @if (breadcrumb.Count == 0)
+                {
+                    <li class="breadcrumb-item active" aria-current="page">All products</li>
+                }
+                else
+                {
+                    <li class="breadcrumb-item"><a asp-controller="Catalog" asp-action="Index">All products</a></li>
+                    @foreach (var crumb in breadcrumb)
+                    {
+                        if (crumb.IsLast)
+                        {
+                            <li class="breadcrumb-item active" aria-current="page">@crumb.Name</li>
+                        }
+                        else
+                        {
+                            <li class="breadcrumb-item">
+                                <a asp-controller="Catalog" asp-action="Index" asp-route-category="@crumb.Slug">@crumb.Name</a>
+                            </li>
+                        }
+                    }
+                }
+            </ol>
+        </nav>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+            <div>
+                <h1 class="h3 mb-1">@Model.Heading</h1>
+                @if (!string.IsNullOrWhiteSpace(currentDescription))
+                {
+                    <p class="text-muted mb-1">@currentDescription</p>
+                }
+                <p class="text-muted small mb-0">
+                    @if (results.TotalCount == 0)
+                    {
+                        <span>No products found</span>
+                    }
+                    else
+                    {
+                        <span>Showing @results.FirstItemNumber–@results.LastItemNumber of @results.TotalCount products</span>
+                    }
+                </p>
+            </div>
+            @if (Model.HasActiveFilters)
+            {
+                <a class="btn btn-sm btn-outline-secondary" asp-controller="Catalog" asp-action="Index">Clear all filters</a>
+            }
+        </div>
+
+        @if (results.TotalCount == 0)
+        {
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <h2 class="h5">Nothing matched those filters</h2>
+                    <p class="text-muted mb-3">
+                        Try widening the price range, choosing another category, or clearing the filters entirely.
+                    </p>
+                    <a class="btn btn-primary" asp-controller="Catalog" asp-action="Index">Browse everything</a>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row row-cols-2 row-cols-md-3 g-3">
+                @foreach (var card in results.Items)
+                {
+                    <div class="col">
+                        <partial name="_ProductCard" model="card" />
+                    </div>
+                }
+            </div>
+
+            @if (lastPage > 1)
+            {
+                <nav class="mt-4" aria-label="Catalogue pages">
+                    <ul class="pagination justify-content-center flex-wrap mb-2">
+                        <li class="page-item @(results.HasPrevious ? string.Empty : "disabled")">
+                            @if (results.HasPrevious)
+                            {
+                                <a class="page-link" asp-controller="Catalog" asp-action="Index"
+                                   asp-route-q="@query.Search"
+                                   asp-route-category="@query.CategorySlug"
+                                   asp-route-minPrice="@minPriceValue"
+                                   asp-route-maxPrice="@maxPriceValue"
+                                   asp-route-brand="@query.Brand"
+                                   asp-route-inStock="@query.InStockOnly" asp-route-minRating="@query.MinRating"
+                                   asp-route-sort="@query.Sort"
+                                   asp-route-page="@(currentPage - 1)">Previous</a>
+                            }
+                            else
+                            {
+                                <span class="page-link">Previous</span>
+                            }
+                        </li>
+
+                        @for (var pageNumber = windowStart; pageNumber <= windowEnd; pageNumber++)
+                        {
+                            <li class="page-item @(pageNumber == currentPage ? "active" : string.Empty)">
+                                @if (pageNumber == currentPage)
+                                {
+                                    <span class="page-link" aria-current="page">@pageNumber</span>
+                                }
+                                else
+                                {
+                                    <a class="page-link" asp-controller="Catalog" asp-action="Index"
+                                       asp-route-q="@query.Search"
+                                       asp-route-category="@query.CategorySlug"
+                                       asp-route-minPrice="@minPriceValue"
+                                       asp-route-maxPrice="@maxPriceValue"
+                                       asp-route-brand="@query.Brand"
+                                       asp-route-inStock="@query.InStockOnly" asp-route-minRating="@query.MinRating"
+                                       asp-route-sort="@query.Sort"
+                                       asp-route-page="@pageNumber">@pageNumber</a>
+                                }
+                            </li>
+                        }
+
+                        <li class="page-item @(results.HasNext ? string.Empty : "disabled")">
+                            @if (results.HasNext)
+                            {
+                                <a class="page-link" asp-controller="Catalog" asp-action="Index"
+                                   asp-route-q="@query.Search"
+                                   asp-route-category="@query.CategorySlug"
+                                   asp-route-minPrice="@minPriceValue"
+                                   asp-route-maxPrice="@maxPriceValue"
+                                   asp-route-brand="@query.Brand"
+                                   asp-route-inStock="@query.InStockOnly" asp-route-minRating="@query.MinRating"
+                                   asp-route-sort="@query.Sort"
+                                   asp-route-page="@(currentPage + 1)">Next</a>
+                            }
+                            else
+                            {
+                                <span class="page-link">Next</span>
+                            }
+                        </li>
+                    </ul>
+                    <p class="text-center text-muted small mb-0">Page @currentPage of @lastPage</p>
+                </nav>
+            }
+        }
+    </div>
+</div>

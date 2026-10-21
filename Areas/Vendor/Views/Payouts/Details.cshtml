@@ -1,0 +1,80 @@
+@model WebDS_Test.Areas.Vendor.Models.VendorPayoutDetailViewModel
+@inject IOptions<StoreSettings> StoreOptions
+@{
+    var payout = Model.Payout;
+    ViewData["Title"] = $"Payout {payout.Reference}";
+    var currency = StoreOptions.Value.CurrencySymbol;
+    string Money(decimal value) => currency + value.ToString("N2");
+}
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Payout @payout.Reference
+                <span class="badge @payout.Status.ToCssClass() fs-6 align-middle">@payout.Status.ToDisplay()</span>
+            </h1>
+            <p class="text-muted mb-0">
+                Paid @payout.CreatedUtc.ToString("yyyy-MM-dd HH:mm") UTC
+                &middot; @payout.Method
+                @if (payout.Status == PayoutStatus.Failed)
+                {
+                    <text>&middot; refused: @payout.FailureReason</text>
+                }
+                @if (payout.Status == PayoutStatus.Reversed)
+                {
+                    <text>&middot; recorded in error and undone; its entries are back in your balance</text>
+                }
+            </p>
+        </div>
+        <a class="btn btn-outline-primary btn-sm" asp-action="Index">All payouts</a>
+    </div>
+
+    <div class="row g-3 mt-3">
+        <div class="col-md-3"><div class="card"><div class="card-body">
+            <div class="text-muted small">Entries</div><div class="h4 mb-0">@payout.EntryCount</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body">
+            <div class="text-muted small">Gross</div><div class="h4 mb-0">@Money(payout.GrossAmount)</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body">
+            <div class="text-muted small">Commission</div><div class="h4 mb-0">@Money(payout.CommissionAmount)</div>
+        </div></div></div>
+        <div class="col-md-3"><div class="card border-success"><div class="card-body">
+            <div class="text-muted small">Net paid</div><div class="h4 mb-0">@Money(payout.NetAmount)</div>
+        </div></div></div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(payout.Note))
+    {
+        <div class="alert alert-light border mt-3 mb-0">@payout.Note</div>
+    }
+
+    <div class="card mt-3">
+        <div class="card-header">Statement lines</div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Entry</th><th>Earned</th><th>Type</th><th>Order</th>
+                        <th class="text-end">Gross</th><th class="text-end">Commission</th>
+                        <th class="text-end">Net</th><th>Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td>@line.Id</td>
+                        <td>@line.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@line.Type</td>
+                        <td>@(line.OrderId?.ToString() ?? "—")</td>
+                        <td class="text-end">@Money(line.GrossAmount)</td>
+                        <td class="text-end">@Money(line.CommissionAmount)</td>
+                        <td class="text-end">@Money(line.NetAmount)</td>
+                        <td class="text-muted small">@line.Note</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

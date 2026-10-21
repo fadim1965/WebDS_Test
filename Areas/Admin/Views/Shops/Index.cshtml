@@ -1,0 +1,94 @@
+@model IReadOnlyList<WebDS_Test.Domain.Shop>
+@{
+    ViewData["Title"] = "Shops";
+}
+<div class="container-fluid py-3">
+    <h1 class="h4">Shops</h1>
+    <table class="table table-sm align-middle">
+        <thead><tr><th>Name</th><th>Status</th><th>Owner</th><th>Commission</th><th>Payout destination</th><th>Actions</th></tr></thead>
+        <tbody>
+        @foreach (var shop in Model)
+        {
+            <tr>
+                <td>
+                    @shop.Name
+                    <a class="small text-muted text-decoration-none" asp-area="Admin" asp-controller="Audit"
+                       asp-action="Index" asp-route-entityType="Shop" asp-route-entityId="@shop.Id"
+                       title="Approval and status history for this shop">(history ↗)</a>
+                </td>
+                <td>
+                    @shop.Status.ToDisplay()
+                    @if (!string.IsNullOrWhiteSpace(shop.StatusReason))
+                    {
+                        <div class="small text-muted">@shop.StatusReason</div>
+                    }
+                </td>
+                <td>@shop.OwnerUserId</td>
+                <td>@shop.CommissionRate.ToString("P0")</td>
+                <td class="small">
+                    @if (!string.IsNullOrWhiteSpace(shop.BankIban))
+                    {
+                        <div><span class="text-muted">IBAN:</span> @shop.BankIban</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(shop.BankName))
+                    {
+                        <div><span class="text-muted">Bank:</span> @shop.BankName</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(shop.BankAccountName))
+                    {
+                        <div><span class="text-muted">Account name:</span> @shop.BankAccountName</div>
+                    }
+                    @if (string.IsNullOrWhiteSpace(shop.BankIban) && string.IsNullOrWhiteSpace(shop.BankName) && string.IsNullOrWhiteSpace(shop.BankAccountName))
+                    {
+                        <span class="text-muted">Not provided</span>
+                    }
+                </td>
+                <td>
+                    <div class="d-flex flex-wrap gap-1 align-items-center">
+                        @if (shop.Status != ShopStatus.Approved)
+                        {
+                            <form asp-area="Admin" asp-controller="Shops" asp-action="Approve" method="post" class="d-inline-flex align-items-center gap-1">
+                                <input type="hidden" name="id" value="@shop.Id" />
+                                <div class="input-group input-group-sm" style="width:9rem">
+                                    <input class="form-control" type="number" name="commissionPercent"
+                                           value="@((shop.CommissionRate * 100m).ToString("0.##"))"
+                                           min="0" max="90" step="0.5" aria-label="Commission percent" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <button class="btn btn-sm btn-success" type="submit">Approve</button>
+                            </form>
+                        }
+                        @if (shop.Status == ShopStatus.PendingApproval)
+                        {
+                            <form asp-area="Admin" asp-controller="Shops" asp-action="Reject" method="post" class="d-inline-flex align-items-center gap-1">
+                                <input type="hidden" name="id" value="@shop.Id" />
+                                <input class="form-control form-control-sm" style="width:12rem" type="text"
+                                       name="reason" placeholder="Rejection reason (shown to vendor)"
+                                       aria-label="Rejection reason" />
+                                <button class="btn btn-sm btn-danger" type="submit">Reject</button>
+                            </form>
+                        }
+                        @if (shop.Status == ShopStatus.Approved)
+                        {
+                            <form asp-area="Admin" asp-controller="Shops" asp-action="Suspend" method="post" class="d-inline-flex align-items-center gap-1">
+                                <input type="hidden" name="id" value="@shop.Id" />
+                                <input class="form-control form-control-sm" style="width:12rem" type="text"
+                                       name="reason" placeholder="Suspension reason (shown to vendor)"
+                                       aria-label="Suspension reason" />
+                                <button class="btn btn-sm btn-warning" type="submit">Suspend</button>
+                            </form>
+                        }
+                        @if (shop.Status == ShopStatus.Suspended)
+                        {
+                            <form asp-area="Admin" asp-controller="Shops" asp-action="Reinstate" method="post" class="d-inline">
+                                <input type="hidden" name="id" value="@shop.Id" />
+                                <button class="btn btn-sm btn-success" type="submit">Reinstate</button>
+                            </form>
+                        }
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>

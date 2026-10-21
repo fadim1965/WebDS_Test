@@ -1,0 +1,90 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model CategoryEditViewModel
+@{
+    string Plural(int count, string singular) => count == 1 ? $"{count} {singular}" : $"{count} {singular}s";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">@(Model.IsNew ? "New category" : "Edit category")</h2>
+        <p class="text-muted small mb-0">
+            @(Model.IsNew
+                ? "Categories group products and drive the storefront menu."
+                : "Renaming or re-nesting a category updates the storefront menu immediately.")
+        </p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Categories" asp-action="Index">Back to categories</a>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-8 col-xxl-6">
+        <form method="post" asp-area="Admin" asp-controller="Categories" asp-action="Save">
+            <input type="hidden" asp-for="Id" />
+
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label required-label" asp-for="Name">Name</label>
+                        <input asp-for="Name" class="form-control" placeholder="e.g. Kitchen" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Slug">URL slug</label>
+                        <input asp-for="Slug" class="form-control" placeholder="kitchen" />
+                        <div class="form-text">Leave blank to generate a slug from the category name.</div>
+                        <span asp-validation-for="Slug" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" asp-for="Description">Description</label>
+                        <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                        <span asp-validation-for="Description" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-7">
+                            <label class="form-label" asp-for="ParentId">Parent category</label>
+                            <select asp-for="ParentId" asp-items="@(new SelectList(Model.AllCategories, "Id", "Name"))" class="form-select">
+                                <option value="">— none (top level) —</option>
+                            </select>
+                            <div class="form-text">Nest this category under another one to build a sub-menu.</div>
+                            <span asp-validation-for="ParentId" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-5">
+                            <label class="form-label" asp-for="DisplayOrder">Display order</label>
+                            <input asp-for="DisplayOrder" type="number" step="1" class="form-control" />
+                            <div class="form-text">Lower numbers appear first.</div>
+                            <span asp-validation-for="DisplayOrder" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-check mt-3">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label class="form-check-label" asp-for="IsActive">Active</label>
+                        <div class="form-text">Inactive categories are hidden from the storefront but kept for history.</div>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.ProductCount > 0)
+            {
+                <div class="alert alert-info" role="alert">
+                    <strong>@Plural(Model.ProductCount, "product")</strong> currently use this category. Deleting it would
+                    orphan those products, so an attempt to delete will deactivate the category instead.
+                </div>
+            }
+
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                <button type="submit" class="btn btn-primary">Save category</button>
+                <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Categories" asp-action="Index">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

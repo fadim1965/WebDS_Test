@@ -1,0 +1,295 @@
+@using Microsoft.Extensions.Options
+@model DashboardViewModel
+@inject IOptions<StoreSettings> StoreOptions
+@{
+    var currency = StoreOptions.Value.CurrencySymbol;
+    var stats = Model.Stats;
+
+    string Money(decimal value) => currency + value.ToString("N2");
+    string Plural(int count, string singular) => count == 1 ? $"{count} {singular}" : $"{count} {singular}s";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Store overview</h2>
+        <p class="text-muted small mb-0">Trading figures, stock alerts and the fulfilment queue.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary" asp-area="Admin" asp-controller="Products" asp-action="Create">New product</a>
+        <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Inventory" asp-action="Index">Manage inventory</a>
+    </div>
+</div>
+
+@* ---- Alarm row: anything that needs an administrator's attention today ---- *@
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-4">
+        <a class="text-decoration-none"
+           asp-area="Admin" asp-controller="Orders" asp-action="Index" asp-route-status="@OrderStatus.Pending">
+            <div class="alert @(stats.PendingOrders > 0 ? "alert-warning" : "alert-light border") mb-0 h-100" role="alert">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Awaiting payment</span>
+                    <span class="badge @(stats.PendingOrders > 0 ? "text-bg-warning" : "text-bg-secondary")">@stats.PendingOrders</span>
+                </div>
+                <div class="small mb-0">
+                    @(stats.PendingOrders > 0 ? "Orders still waiting to be paid or cancelled." : "No orders are waiting on payment.")
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-md-4">
+        <a class="text-decoration-none"
+           asp-area="Admin" asp-controller="Inventory" asp-action="Index" asp-route-filter="low">
+            <div class="alert @(stats.LowStockVariants > 0 ? "alert-warning" : "alert-light border") mb-0 h-100" role="alert">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Low stock</span>
+                    <span class="badge @(stats.LowStockVariants > 0 ? "text-bg-warning" : "text-bg-secondary")">@stats.LowStockVariants</span>
+                </div>
+                <div class="small mb-0">@Plural(stats.LowStockVariants, "variant") running low on stock.</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-md-4">
+        <a class="text-decoration-none"
+           asp-area="Admin" asp-controller="Inventory" asp-action="Index" asp-route-filter="out">
+            <div class="alert @(stats.OutOfStockVariants > 0 ? "alert-danger" : "alert-light border") mb-0 h-100" role="alert">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Out of stock</span>
+                    <span class="badge @(stats.OutOfStockVariants > 0 ? "text-bg-danger" : "text-bg-secondary")">@stats.OutOfStockVariants</span>
+                </div>
+                <div class="small mb-0">@Plural(stats.OutOfStockVariants, "variant") unavailable to shoppers.</div>
+            </div>
+        </a>
+    </div>
+</div>
+
+@* ---- Headline figures ---- *@
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Total orders</div>
+                <div class="stat-value">@stats.TotalOrders</div>
+                <div class="small text-muted mt-1">@Plural(stats.OrdersLast30Days, "order") in the last 30 days</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Pending</div>
+                <div class="stat-value">@stats.PendingOrders</div>
+                <div class="small text-muted mt-1">@stats.PaidOrders paid · @stats.ShippedOrders shipped</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Revenue</div>
+                <div class="stat-value">@Money(stats.Revenue)</div>
+                <div class="small text-muted mt-1">Paid, shipped and delivered orders</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Revenue · 30 days</div>
+                <div class="stat-value">@Money(stats.RevenueLast30Days)</div>
+                <div class="small text-muted mt-1">Orders placed since @DateTime.UtcNow.AddDays(-30).ToString("d MMM yyyy")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Orders · 30 days</div>
+                <div class="stat-value">@stats.OrdersLast30Days</div>
+                <div class="small text-muted mt-1">Including unpaid orders</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a class="text-decoration-none text-reset" asp-area="Admin" asp-controller="Products" asp-action="Index">
+            <div class="card stat-card card-hover h-100">
+                <div class="card-body">
+                    <div class="stat-label">Products</div>
+                    <div class="stat-value">@stats.ProductCount</div>
+                    <div class="small text-muted mt-1">In the catalogue, deleted included</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a class="text-decoration-none text-reset" asp-area="Admin" asp-controller="Customers" asp-action="Index">
+            <div class="card stat-card card-hover h-100">
+                <div class="card-body">
+                    <div class="stat-label">Customers</div>
+                    <div class="stat-value">@stats.CustomerCount</div>
+                    <div class="small text-muted mt-1">Registered accounts</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="stat-label">Inventory value</div>
+                <div class="stat-value">@Money(stats.InventoryValue)</div>
+                <div class="small text-muted mt-1">Retail value of stock on hand</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ---- Low stock ---- *@
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span class="fw-semibold">Low stock</span>
+        <a class="small" asp-area="Admin" asp-controller="Inventory" asp-action="Index" asp-route-filter="low">Open inventory</a>
+    </div>
+
+    @if (stats.LowStock.Count == 0)
+    {
+        <div class="card-body text-muted small">Every variant is above its low-stock threshold.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle table-sticky-head mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">SKU</th>
+                        <th scope="col">Product</th>
+                        <th scope="col" class="text-end">Stock</th>
+                        <th scope="col" class="text-end">Threshold</th>
+                        <th scope="col" class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in stats.LowStock)
+                    {
+                        <tr>
+                            <td><code class="small">@row.Sku</code></td>
+                            <td>@(string.IsNullOrWhiteSpace(row.ProductName) ? "—" : row.ProductName)</td>
+                            <td class="text-end">
+                                @if (row.StockQuantity <= 0)
+                                {
+                                    <span class="badge text-bg-danger">Out of stock</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-warning">@row.StockQuantity</span>
+                                }
+                            </td>
+                            <td class="text-end text-muted small">@row.LowStockThreshold</td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   asp-area="Admin" asp-controller="Inventory" asp-action="Index" asp-route-q="@row.Sku">Restock</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@* ---- Fulfilment queue ---- *@
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span class="fw-semibold">Pending fulfilment</span>
+        <a class="small" asp-area="Admin" asp-controller="Orders" asp-action="Index" asp-route-status="@OrderStatus.Pending">View all pending</a>
+    </div>
+
+    @if (Model.PendingOrders.Count == 0)
+    {
+        <div class="card-body text-muted small">Nothing is waiting — there are no pending orders.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle table-sticky-head mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Order</th>
+                        <th scope="col">Placed</th>
+                        <th scope="col">Customer</th>
+                        <th scope="col" class="text-end">Items</th>
+                        <th scope="col" class="text-end">Total</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model.PendingOrders)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">@order.OrderNumber</a>
+                            </td>
+                            <td class="small text-muted">@order.PlacedUtc.ToString("d MMM yyyy HH:mm")</td>
+                            <td>
+                                @(string.IsNullOrWhiteSpace(order.CustomerName) ? "—" : order.CustomerName)
+                                <div class="small text-muted">@order.Email</div>
+                            </td>
+                            <td class="text-end">@order.TotalQuantity</td>
+                            <td class="text-end">@Money(order.GrandTotal)</td>
+                            <td><span class="badge @order.Status.ToCssClass()">@order.Status.ToDisplay()</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@* ---- Most recent trading ---- *@
+<div class="card">
+    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span class="fw-semibold">Recent orders</span>
+        <a class="small" asp-area="Admin" asp-controller="Orders" asp-action="Index">All orders</a>
+    </div>
+
+    @if (stats.RecentOrders.Count == 0)
+    {
+        <div class="card-body text-muted small">No orders have been placed yet.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle table-sticky-head mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Order</th>
+                        <th scope="col">Placed</th>
+                        <th scope="col">Customer</th>
+                        <th scope="col" class="text-end">Items</th>
+                        <th scope="col" class="text-end">Total</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in stats.RecentOrders)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id">@order.OrderNumber</a>
+                            </td>
+                            <td class="small text-muted">@order.PlacedUtc.ToString("d MMM yyyy HH:mm")</td>
+                            <td>
+                                @(string.IsNullOrWhiteSpace(order.CustomerName) ? "—" : order.CustomerName)
+                                <div class="small text-muted">@order.Email</div>
+                            </td>
+                            <td class="text-end">@order.TotalQuantity</td>
+                            <td class="text-end">@Money(order.GrandTotal)</td>
+                            <td><span class="badge @order.Status.ToCssClass()">@order.Status.ToDisplay()</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

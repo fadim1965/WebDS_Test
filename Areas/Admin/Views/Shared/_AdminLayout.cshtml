@@ -1,0 +1,106 @@
+@using Microsoft.Extensions.Options
+@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@inject IOptions<WebDS_Test.Domain.BrandingOptions> BrandOptions
+@{
+    var store = StoreOptions.Value;
+    var brand = BrandOptions.Value;
+    var message = TempData["Message"] as string;
+    var messageType = TempData["MessageType"] as string ?? "success";
+    var controller = (ViewContext.RouteData.Values["controller"] as string ?? string.Empty).ToLowerInvariant();
+
+    string Active(string name) => controller == name.ToLowerInvariant() ? "active" : string.Empty;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] is null ? "Admin" : $"{ViewData["Title"]} · Admin") · @store.Name</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="@brand.Primary" />
+    <link rel="icon" href="~/favicon.ico" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>:root{@Html.Raw(brand.ToCssVariables())}</style>
+    <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/dashboard.css" asp-append-version="true" />
+</head>
+<body class="admin-body">
+    <div class="container-fluid">
+        <div class="row">
+            <aside class="col-lg-2 admin-sidebar p-3">
+                <a class="d-flex align-items-center mb-3 text-decoration-none" asp-area="" asp-controller="Home" asp-action="Index">
+                    <span class="brand-wordmark" style="font-size:1.35rem;">
+                        <span class="wordmark-liban" style="color:#fff;">Liban</span><span class="wordmark-post" style="color:var(--brand-accent);">Post</span>
+                    </span>
+                </a>
+                <div class="small mb-3 ps-1" style="color:rgba(255,255,255,.6);">Store administration</div>
+
+                <nav>
+                    <div class="sidebar-heading">Overview</div>
+                    <a class="@Active("Dashboard")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+
+                    <div class="sidebar-heading">Catalogue</div>
+                    <a class="@Active("Products")" asp-area="Admin" asp-controller="Products" asp-action="Index">Products</a>
+                    <a class="@Active("Import")" asp-area="Admin" asp-controller="Import" asp-action="Index">Import</a>
+                    <a class="@Active("Categories")" asp-area="Admin" asp-controller="Categories" asp-action="Index">Categories</a>
+                    <a class="@Active("Inventory")" asp-area="Admin" asp-controller="Inventory" asp-action="Index">Inventory</a>
+
+                    <div class="sidebar-heading">Sales</div>
+                    <a class="@Active("Orders")" asp-area="Admin" asp-controller="Orders" asp-action="Index">Orders</a>
+                    <a class="@Active("Returns")" asp-area="Admin" asp-controller="Returns" asp-action="Index">Returns</a>
+                    <a class="@Active("Customers")" asp-area="Admin" asp-controller="Customers" asp-action="Index">Customers</a>
+                    <a class="@Active("Coupons")" asp-area="Admin" asp-controller="Coupons" asp-action="Index">Coupons</a>
+                    <a class="@Active("Tax")" asp-area="Admin" asp-controller="Tax" asp-action="Index">Tax</a>
+
+                    <div class="sidebar-heading">Marketplace</div>
+                    <a class="@Active("Shops")" asp-area="Admin" asp-controller="Shops" asp-action="Index">Shops</a>
+                    <a class="@Active("Payouts")" asp-area="Admin" asp-controller="Payouts" asp-action="Index">Payouts</a>
+                    <a class="@Active("Marketing")" asp-area="Admin" asp-controller="Marketing" asp-action="Index">Marketing</a>
+                    <a class="@Active("Reviews")" asp-area="Admin" asp-controller="Reviews" asp-action="Index">Reviews</a>
+
+                    <div class="sidebar-heading">Operations</div>
+                    <a class="@Active("Emails")" asp-area="Admin" asp-controller="Emails" asp-action="Index">Emails</a>
+                    <a class="@Active("Audit")" asp-area="Admin" asp-controller="Audit" asp-action="Index">Audit trail</a>
+
+                    <div class="sidebar-heading">Storefront</div>
+                    <a asp-area="" asp-controller="Home" asp-action="Index">View eShop</a>
+                    <form asp-area="" asp-controller="Account" asp-action="Logout" method="post" class="mt-1">
+                        <button type="submit" class="btn btn-link text-start w-100 p-2 text-decoration-none"
+                                style="color:rgba(255,255,255,.75);">Sign out</button>
+                    </form>
+                </nav>
+            </aside>
+
+            <div class="col-lg-10 p-0">
+                <div class="admin-topbar px-4 py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <h1 class="h4 mb-0">@ViewData["Title"]</h1>
+                        <div class="small text-muted">Signed in as @User.Identity?.Name</div>
+                    </div>
+                    <a class="btn btn-outline-primary btn-sm" asp-area="" asp-controller="Home" asp-action="Index">
+                        Back to eShop
+                    </a>
+                </div>
+
+                <div class="p-4">
+                    @if (!string.IsNullOrEmpty(message))
+                    {
+                        <div class="alert alert-@messageType alert-dismissible fade show" role="alert">
+                            @message
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @RenderBody()
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,207 @@
+@model WebDS_Test.Domain.ReturnRequest
+@inject Microsoft.Extensions.Options.IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@{
+    var order = Model.Order;
+    var history = ViewData["AuditHistory"] as IReadOnlyList<WebDS_Test.Domain.AuditLog>;
+    var currency = StoreOptions.Value.CurrencySymbol;
+
+    string Money(decimal value) => currency + value.ToString("N2");
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Return @Model.Reference
+                <span class="badge @Model.Status.ToCssClass() fs-6 align-middle">@Model.Status.ToDisplay()</span>
+            </h1>
+            <p class="text-muted mb-0">
+                Order
+                <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@Model.OrderId">
+                    @(order?.OrderNumber ?? $"#{Model.OrderId}")
+                </a>
+                &middot; shop @(Model.Shop?.Name ?? "(removed)")
+                &middot; requested @Model.RequestedUtc.ToString("yyyy-MM-dd HH:mm") UTC
+            </p>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index">All returns</a>
+    </div>
+
+    <div class="row g-3 mt-2">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-white fw-semibold">Shopper</div>
+                <div class="card-body small">
+                    <div class="fw-semibold fs-6">@(order?.CustomerName ?? "Guest")</div>
+                    <div><a href="mailto:@Model.Email">@Model.Email</a></div>
+                    @if (!string.IsNullOrWhiteSpace(Model.CustomerNote))
+                    {
+                        <hr class="my-2" />
+                        <div class="text-muted">Reason given:</div>
+                        <div style="white-space: pre-line">@Model.CustomerNote</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-white fw-semibold">History</div>
+                <div class="card-body small">
+                    <div>Requested @Model.RequestedUtc.ToString("yyyy-MM-dd HH:mm")</div>
+                    @if (Model.DecidedUtc is { } decided)
+                    {
+                        <div>Decided @decided.ToString("yyyy-MM-dd HH:mm")</div>
+                    }
+                    @if (Model.ReceivedUtc is { } received)
+                    {
+                        <div>Goods received @received.ToString("yyyy-MM-dd HH:mm")</div>
+                    }
+                    @if (Model.RefundedUtc is { } refunded)
+                    {
+                        <div>Refunded @refunded.ToString("yyyy-MM-dd HH:mm") — @Money(Model.RefundAmount)</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.HandledBy))
+                    {
+                        <div class="text-muted">Handled by @Model.HandledBy</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.DecisionNote))
+                    {
+                        <hr class="my-2" />
+                        <div class="text-muted">Note: @Model.DecisionNote</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-white fw-semibold">Actions</div>
+                <div class="card-body">
+                    @if (Model.Status == ReturnStatus.Requested)
+                    {
+                        <form asp-action="Decide" method="post" class="mb-3">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="approve" value="true" />
+                            <label class="form-label small fw-semibold mb-1" for="approveNote">Note (optional)</label>
+                            <textarea id="approveNote" name="note" rows="2" class="form-control form-control-sm mb-2"></textarea>
+                            <button type="submit" class="btn btn-success btn-sm w-100">Approve on the shop's behalf</button>
+                        </form>
+                        <form asp-action="Decide" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="approve" value="false" />
+                            <label class="form-label small fw-semibold mb-1" for="rejectNote">Reason</label>
+                            <textarea id="rejectNote" name="note" rows="2" class="form-control form-control-sm mb-2"></textarea>
+                            <button type="submit" class="btn btn-outline-danger btn-sm w-100">Reject</button>
+                        </form>
+                    }
+                    else if (Model.Status == ReturnStatus.Approved)
+                    {
+                        <p class="small text-muted">Approved — waiting for the goods.</p>
+                        <form asp-action="Receive" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <button type="submit" class="btn btn-primary btn-sm w-100">Mark goods received</button>
+                        </form>
+                    }
+                    else if (Model.Status == ReturnStatus.Received)
+                    {
+                        <form asp-action="Refund" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <label class="form-label small fw-semibold mb-1" for="refundNote">Audit note (optional)</label>
+                            <textarea id="refundNote" name="note" rows="2" class="form-control form-control-sm mb-2"></textarea>
+                            <button type="submit" class="btn btn-success btn-sm w-100">Issue refund</button>
+                        </form>
+                        <p class="small text-muted mb-0 mt-2">
+                            The gateway returns the shopper's payment and the vendor ledger is reversed
+                            proportionally. When the whole order comes back, its status becomes Refunded.
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="small text-muted mb-0">
+                            @switch (Model.Status)
+                            {
+                                case ReturnStatus.Refunded:
+                                    <text>Complete — refunded @Money(Model.RefundAmount).</text>
+                                    break;
+                                case ReturnStatus.Rejected:
+                                    <text>Rejected.</text>
+                                    break;
+                                case ReturnStatus.Cancelled:
+                                    <text>The shopper withdrew this request.</text>
+                                    break;
+                                default:
+                                    <text>@Model.Status.ToDisplay()</text>
+                                    break;
+                            }
+                        </p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header bg-white fw-semibold">Items returned</div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>SKU</th>
+                        <th class="text-center">Qty returned</th>
+                        <th class="text-center">Ordered</th>
+                        <th class="text-end">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in Model.Lines)
+                    {
+                        <tr>
+                            <td>
+                                @(line.OrderLine?.ProductName ?? "—")
+                                @if (!string.IsNullOrWhiteSpace(line.OrderLine?.VariantName))
+                                {
+                                    <span class="small text-muted">· @line.OrderLine.VariantName</span>
+                                }
+                            </td>
+                            <td><code class="small">@(line.OrderLine?.Sku ?? "—")</code></td>
+                            <td class="text-center">@line.Quantity</td>
+                            <td class="text-center">@(line.OrderLine?.Quantity.ToString() ?? "—")</td>
+                            <td class="text-end text-nowrap">@Money(line.LineTotal)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header bg-white fw-semibold">Audit trail for this return</div>
+        <div class="card-body py-1">
+            @if (history is { Count: > 0 })
+            {
+                <ul class="list-unstyled small mb-0">
+                    @foreach (var entry in history)
+                    {
+                        <li class="py-1">
+                            <span class="text-muted">@entry.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</span>
+                            — <strong>@entry.Action</strong> by @entry.Actor
+                            @if (!string.IsNullOrWhiteSpace(entry.Summary))
+                            {
+                                <div class="text-muted">@entry.Summary</div>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p class="text-muted small mb-0 py-2">No audit entries recorded for this return.</p>
+            }
+        </div>
+    </div>
+</div>

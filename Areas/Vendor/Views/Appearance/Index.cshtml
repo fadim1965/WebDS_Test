@@ -1,0 +1,64 @@
+@model WebDS_Test.Areas.Vendor.Controllers.ShopAppearanceViewModel
+@{
+    ViewData["Title"] = "Shop appearance";
+}
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end mb-3 gap-2">
+        <div>
+            <h1 class="h3 mb-1">Appearance</h1>
+            <p class="text-muted mb-0">Choose the template theme for <strong>@Model.Shop.Name</strong>.</p>
+        </div>
+        <a class="btn btn-outline-primary btn-sm" href="@Url.Action("Details", "Shops", new { area = "", slug = Model.Shop.Slug })" target="_blank" rel="noopener">
+            Preview storefront
+        </a>
+    </div>
+
+    <form asp-area="Vendor" asp-controller="Appearance" asp-action="Index" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="All" class="text-danger mb-2"></div>
+
+        <div class="row g-3">
+            @foreach (var theme in Model.Themes)
+            {
+                var selected = theme.Key == Model.SelectedKey;
+                // Each preview card carries its own theme's variables inline, so it renders in that
+                // theme while the surrounding page keeps the vendor's current one.
+                <div class="col-md-6 col-xl-4">
+                    <label class="shop-theme-card @(selected ? "is-selected" : "")"
+                           style="@theme.ToCssVariables()" data-shop-theme="@theme.Key">
+                        <input type="radio" name="themeKey" value="@theme.Key" checked="@selected"
+                               onchange="document.querySelectorAll('.shop-theme-card').forEach(function (c) { c.classList.remove('is-selected'); }); this.closest('.shop-theme-card').classList.add('is-selected');" />
+
+                        <div class="shop-theme-swatch" aria-hidden="true">
+                            @foreach (var colour in theme.Swatch)
+                            {
+                                <span style="background:@colour;"></span>
+                            }
+                        </div>
+
+                        <div class="shop-theme-card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="shop-theme-card-title">@theme.Name</span>
+                                <span class="shop-theme-card-tone">@theme.Tone</span>
+                            </div>
+                            <p class="small text-muted mb-0">@theme.Description</p>
+
+                            <div class="shop-theme-preview">
+                                <div class="bar">@Model.Shop.Name</div>
+                                <div class="body d-flex align-items-center justify-content-between">
+                                    <span class="small" style="color:var(--brand-ink);font-weight:600;">Sample product</span>
+                                    <span class="btn-sample">Add</span>
+                                </div>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            }
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Apply theme</button>
+            <a class="btn btn-link" asp-area="Vendor" asp-controller="Dashboard" asp-action="Index">Back to dashboard</a>
+        </div>
+    </form>
+</div>

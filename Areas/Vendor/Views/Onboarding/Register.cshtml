@@ -1,0 +1,138 @@
+@model WebDS_Test.Services.ShopRegistration
+@inject WebDS_Test.Services.IThemeCatalog Themes
+@using WebDS_Test.Domain
+@{
+    ViewData["Title"] = "Register a shop";
+    var shopStatus = ViewData["ShopStatus"] as ShopStatus?;
+    var statusReason = ViewData["StatusReason"] as string;
+}
+<div class="container py-4" style="max-width: 720px;">
+    <h1 class="h3">Register your shop</h1>
+    <p class="text-muted">Choose a template theme now — you can change it any time from your dashboard.</p>
+
+    @if (shopStatus == ShopStatus.Rejected)
+    {
+        <div class="alert alert-warning">
+            <strong>Your application was rejected.</strong>
+            @if (!string.IsNullOrWhiteSpace(statusReason))
+            {
+                <span>@statusReason</span>
+            }
+            <span> Update the details below and resubmit for review.</span>
+        </div>
+    }
+    else if (shopStatus == ShopStatus.Suspended)
+    {
+        <div class="alert alert-danger">
+            <strong>This shop is suspended.</strong>
+            @if (!string.IsNullOrWhiteSpace(statusReason))
+            {
+                <span>@statusReason</span>
+            }
+            <span> Contact support to resolve this before resubmitting.</span>
+        </div>
+    }
+    else if (shopStatus == ShopStatus.PendingApproval)
+    {
+        <div class="alert alert-info">
+            This application is already awaiting approval — update the details and resubmit if anything changed.
+        </div>
+    }
+
+    <form asp-area="Vendor" asp-controller="Onboarding" asp-action="Register" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="All" class="text-danger"></div>
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label">Shop name</label>
+            <input asp-for="Name" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Tagline" class="form-label">Tagline</label>
+            <input asp-for="Tagline" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label">Description</label>
+            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+        </div>
+
+        <hr class="my-4" />
+        <h2 class="h5">Contact &amp; pickup details</h2>
+        <p class="text-muted small mb-3">
+            The courier needs these to collect parcels from your shop, and the marketplace uses
+            them to reach you about orders.
+        </p>
+        <div class="row mb-3">
+            <div class="col-sm-6">
+                <label asp-for="ContactName" class="form-label">Contact name</label>
+                <input asp-for="ContactName" class="form-control" />
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="Phone" class="form-label">Phone</label>
+                <input asp-for="Phone" class="form-control" type="tel" />
+            </div>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label">Email</label>
+            <input asp-for="Email" class="form-control" type="email" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="AddressLine1" class="form-label">Pickup address</label>
+            <input asp-for="AddressLine1" class="form-control" />
+        </div>
+        <div class="row mb-3">
+            <div class="col-sm-4">
+                <label asp-for="City" class="form-label">City</label>
+                <input asp-for="City" class="form-control" />
+            </div>
+            <div class="col-sm-4">
+                <label asp-for="PostalCode" class="form-label">Postal code</label>
+                <input asp-for="PostalCode" class="form-control" />
+            </div>
+            <div class="col-sm-4">
+                <label asp-for="Country" class="form-label">Country</label>
+                <input asp-for="Country" class="form-control" />
+            </div>
+        </div>
+        <div class="mb-3">
+            <label asp-for="PickupLocation" class="form-label">Pickup location / branch</label>
+            <input asp-for="PickupLocation" class="form-control" placeholder="e.g. Tripoli branch, ground floor" />
+            <div class="form-text">Where the courier finds the parcel — name the branch, floor or landmark.</div>
+        </div>
+
+        <hr class="my-4" />
+        <h2 class="h5">Payout details</h2>
+        <p class="text-muted small mb-3">
+            Where the marketplace sends your settlements. You can change these later on your
+            payouts page — nothing is sent while your application is under review.
+        </p>
+        <div class="row mb-3">
+            <div class="col-sm-6">
+                <label asp-for="BankAccountName" class="form-label">Account name</label>
+                <input asp-for="BankAccountName" class="form-control" />
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="BankName" class="form-label">Bank name</label>
+                <input asp-for="BankName" class="form-control" />
+            </div>
+        </div>
+        <div class="mb-3">
+            <label asp-for="BankIban" class="form-label">IBAN</label>
+            <input asp-for="BankIban" class="form-control" placeholder="e.g. LB62 0019 0000 0000 0001 2345 6789" />
+        </div>
+
+        <hr class="my-4" />
+        <div class="mb-3">
+            <label asp-for="ThemeKey" class="form-label">Template theme</label>
+            <select asp-for="ThemeKey" class="form-select">
+                @foreach (var theme in Themes.All)
+                {
+                    <option value="@theme.Key">@theme.Name — @theme.Description</option>
+                }
+            </select>
+        </div>
+        <div class="mb-3">
+            <input asp-for="AcceptTerms" type="checkbox" /> <label asp-for="AcceptTerms">I accept the marketplace terms</label>
+        </div>
+        <button type="submit" class="btn btn-primary">@(shopStatus is ShopStatus.Rejected or ShopStatus.PendingApproval ? "Resubmit application" : "Register")</button>
+    </form>
+</div>
