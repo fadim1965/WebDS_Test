@@ -1,0 +1,85 @@
+@model IReadOnlyList<WebDS_Test.Domain.Conversation>
+@{
+    var openOnly = ViewData["OpenOnly"] as bool?;
+    var unread = (int)(ViewData["Unread"] ?? 0);
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Messages</h1>
+            <p class="text-muted mb-0">
+                Questions shoppers opened from your storefront page, newest activity first.
+                Reply here and they are emailed your answer.
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            @if (unread > 0)
+            {
+                <span class="badge text-bg-danger">@unread waiting</span>
+            }
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Returns" asp-action="Index">Returns</a>
+        </div>
+    </div>
+
+    <div class="btn-group btn-group-sm mt-2" role="group" aria-label="Conversation filter">
+        <a class="btn btn-outline-secondary @(openOnly == true ? "" : "active")" asp-action="Index">All</a>
+        <a class="btn btn-outline-secondary @(openOnly == true ? "active" : "")" asp-action="Index" asp-route-open="true">Open only</a>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="alert alert-light border mt-3">No messages yet.</div>
+    }
+
+    <div class="table-responsive mt-3">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Reference</th>
+                    <th>Shopper</th>
+                    <th>Subject</th>
+                    <th>Last activity</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var conversation in Model)
+                {
+                    // Waiting on the shop: the shopper wrote last and nobody here has opened it since.
+                    var waiting = conversation.LastAuthor == ConversationAuthor.Customer
+                        && conversation.LastMessageUtc > (conversation.VendorLastReadUtc ?? DateTime.MinValue);
+
+                    <tr>
+                        <td>
+                            <strong>@conversation.Reference</strong>
+                            @if (waiting)
+                            {
+                                <div><span class="badge text-bg-danger">New</span></div>
+                            }
+                        </td>
+                        <td>
+                            <div class="small">@conversation.CustomerEmail</div>
+                            @if (conversation.Order is not null)
+                            {
+                                <div class="small text-muted">Order @conversation.Order.OrderNumber</div>
+                            }
+                        </td>
+                        <td>
+                            <div class="fw-semibold">@conversation.Subject</div>
+                            <div class="small text-muted text-truncate" style="max-width:340px">@conversation.LastMessagePreview</div>
+                        </td>
+                        <td class="text-nowrap small">@conversation.LastMessageUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td><span class="badge @conversation.Status.ToCssClass()">@conversation.Status.ToDisplay()</span></td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@conversation.Id">
+                                @(waiting ? "Answer" : "Open")
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

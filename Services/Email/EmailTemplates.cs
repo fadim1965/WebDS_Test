@@ -241,6 +241,54 @@ public static class EmailTemplates
         return new RenderedEmail($"Refund issued for return {request.Reference}", html, text);
     }
 
+    /// <summary>
+    /// One message in a shopper–shop conversation, mailed to whichever side did not write it.
+    /// </summary>
+    public static RenderedEmail ConversationMessage(
+        Conversation conversation, ConversationMessage message, StoreSettings store, BrandingOptions brand)
+    {
+        var shopName = conversation.Shop?.Name ?? "the shop";
+
+        // The heading names the sender, because that is the one fact the recipient decides on.
+        var heading = message.Author == ConversationAuthor.Customer
+            ? $"New message from a shopper ({conversation.Reference})"
+            : $"Reply from {shopName} ({conversation.Reference})";
+
+        var from = message.Author == ConversationAuthor.Customer
+            ? "A shopper"
+            : message.Author == ConversationAuthor.Vendor
+                ? shopName
+                : store.Name;
+
+        var body = $"""
+            <p style="margin:0 0 12px">Hi there,</p>
+            <p style="margin:0 0 12px">
+              There is a new message on conversation <strong>{Escape(conversation.Reference)}</strong>
+              &mdash; &ldquo;{Escape(conversation.Subject)}&rdquo;.
+            </p>
+            <p style="margin:0 0 4px;font-weight:600">{Escape(from)} wrote</p>
+            <p style="margin:0 0 12px">{MessageBody(message.Body)}</p>
+            <p style="margin:16px 0 0;color:{brand.InkSubtle};font-size:13px">
+              Sign in to answer on the site &mdash; the conversation is kept there.
+            </p>
+            """;
+
+        var html = Layout(store, brand, heading, body);
+        var text = $"""
+            Hi there,
+
+            New message on conversation {conversation.Reference} — {conversation.Subject}.
+
+            {from} wrote:
+
+            {message.Body}
+
+            {store.Name}
+            """;
+
+        return new RenderedEmail(heading, html, text);
+    }
+
     /// <summary>Tells a shop's owner a payout was recorded against their balance.</summary>
     public static RenderedEmail PayoutIssued(VendorPayout payout, StoreSettings store, BrandingOptions brand)
     {
@@ -490,4 +538,8 @@ public static class EmailTemplates
         string.IsNullOrWhiteSpace(name) ? "there" : name.Trim();
 
     private static string Escape(string value) => WebUtility.HtmlEncode(value);
+
+    /// <summary>A message body as HTML: encoded, with the writer's line breaks preserved.</summary>
+    private static string MessageBody(string value) =>
+        Escape(value).Replace("\r\n", "\n", StringComparison.Ordinal).Replace("\n", "<br />", StringComparison.Ordinal);
 }

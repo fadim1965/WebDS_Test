@@ -33,6 +33,13 @@
         <div class="d-flex gap-2">
             <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Orders" asp-action="Index">Orders</a>
             <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Returns" asp-action="Index">Returns</a>
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Messages" asp-action="Index">
+                Messages
+                @if ((int)(ViewData["UnreadMessages"] ?? 0) > 0)
+                {
+                    <span class="badge text-bg-danger">@ViewData["UnreadMessages"]</span>
+                }
+            </a>
             <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Products" asp-action="Index">Products</a>
             <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Reviews" asp-action="Index">Reviews</a>
             <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Payouts" asp-action="Index">Payouts</a>

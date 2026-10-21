@@ -160,6 +160,10 @@ builder.Services.AddScoped<ICouponService, CouponService>();
 builder.Services.AddScoped<IReturnService, ReturnService>();
 builder.Services.AddScoped<IAuditTrail, AuditTrail>();
 
+// Shopper <-> shop conversations. Shares the email outbox with the order and return services, so
+// a reply on one side notifies the other the same way every other notification does.
+builder.Services.AddScoped<IConversationService, ConversationService>();
+
 // Bulk catalogue import. The CSV reader is the inverse of the export writer, so a file the store
 // produced can be edited in a spreadsheet and handed straight back.
 builder.Services.AddScoped<WebDS_Test.Services.Imports.IProductImportService, WebDS_Test.Services.Imports.ProductImportService>();
@@ -283,6 +287,7 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy(RateLimitPolicies.Auth, http => Partition(http, RateLimitPolicies.Auth, rateLimits.Auth));
     options.AddPolicy(RateLimitPolicies.Checkout, http => Partition(http, RateLimitPolicies.Checkout, rateLimits.Checkout));
     options.AddPolicy(RateLimitPolicies.Review, http => Partition(http, RateLimitPolicies.Review, rateLimits.Review));
+    options.AddPolicy(RateLimitPolicies.Messaging, http => Partition(http, RateLimitPolicies.Messaging, rateLimits.Messaging));
     options.AddPolicy(RateLimitPolicies.Webhook, http => Partition(http, RateLimitPolicies.Webhook, rateLimits.Webhook));
 });
 

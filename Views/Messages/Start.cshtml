@@ -1,0 +1,57 @@
+@model WebDS_Test.Models.ConversationStartForm
+@{
+    var shopName = (string)(ViewData["ShopName"] ?? "the shop");
+    ViewData["Title"] = $"Message {shopName}";
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Shops" asp-action="Index">Shops</a></li>
+            <li class="breadcrumb-item"><a asp-controller="Shops" asp-action="Details" asp-route-slug="@(ViewData["ShopSlug"] ?? "")">@shopName</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Message the shop</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h1 class="h3 mb-1">Message @shopName</h1>
+            <p class="text-muted">
+                Ask about a product, an order or delivery before you buy. The shop is emailed when
+                you send this, and their answer appears under <a asp-action="Index">Messages</a>.
+            </p>
+
+            <div class="card">
+                <div class="card-body">
+                    <form asp-action="Start" method="post">
+                        <input type="hidden" asp-for="ShopId" />
+                        <input type="hidden" asp-for="OrderId" />
+
+                        <div class="mb-3">
+                            <label asp-for="Subject" class="form-label">Subject</label>
+                            <input asp-for="Subject" class="form-control" maxlength="200" required
+                                   placeholder="Is this in stock, and how long is delivery to Tripoli?" />
+                            <span asp-validation-for="Subject" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Body" class="form-label">Your question</label>
+                            <textarea asp-for="Body" class="form-control" rows="6" maxlength="4000" required
+                                      placeholder="Give the shop enough detail to answer in one reply."></textarea>
+                            <span asp-validation-for="Body" class="text-danger small"></span>
+                        </div>
+
+                        @if (Model.OrderId is not null)
+                        {
+                            <p class="small text-muted">This message is filed against your order.</p>
+                        }
+
+                        <button type="submit" class="btn btn-primary">Send message</button>
+                        <a class="btn btn-outline-secondary" asp-controller="Shops" asp-action="Details"
+                           asp-route-slug="@(ViewData["ShopSlug"] ?? "")">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

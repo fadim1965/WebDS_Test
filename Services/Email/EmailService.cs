@@ -47,6 +47,14 @@ public interface IEmailService
     /// <summary>Refund confirmation once a completed return has been paid back.</summary>
     Task NotifyReturnRefundedAsync(ReturnRequest request, CancellationToken ct = default);
 
+    /// <summary>
+    /// Tells the other side of a conversation there is a new message: a shopper's message mails
+    /// the shop's contact address, a shop's or an administrator's mails the shopper. No-ops when
+    /// the shop has no contact email.
+    /// </summary>
+    Task NotifyConversationMessageAsync(
+        Conversation conversation, ConversationMessage message, CancellationToken ct = default);
+
     /// <summary>Tells a shop their settlement has been recorded. No-ops without a contact email.</summary>
     Task NotifyPayoutIssuedAsync(VendorPayout payout, CancellationToken ct = default);
 
@@ -221,6 +229,32 @@ public sealed class EmailService : IEmailService
             request.Email, request.Order?.CustomerName, rendered.Subject, rendered.Html, rendered.Text,
             EmailKind.ReturnRefunded, DedupeKey: $"return-refunded:{request.Id}",
             UserId: request.UserId, OrderId: request.OrderId), ct);
+    }
+
+    public Task NotifyConversationMessageAsync(
+        Conversation conversation, ConversationMessage message, CancellationToken ct = default)
+    {
+        var toCustomer = message.Author != ConversationAuthor.Customer;
+        var toAddress = toCustomer ? conversation.CustomerEmail : conversation.Shop?.Email;
+
+        if (string.IsNullOrWhiteSpace(toAddress))
+        {
+            // No contact email on the shop — nothing to send to. Choosing another address (the
+            // owner's, say) is the caller's decision, not this service's — the same rule the
+            // payout notification applies.
+            return Task.CompletedTask;
+        }
+
+        var rendered = EmailTemplates.ConversationMessage(conversation, message, _store, _brand);
+
+        // Keyed per message: one message reaching the other side is one fact, however many times
+        // the command that produced it is retried.
+        return EnqueueAsync(new EmailDraft(
+            toAddress, toCustomer ? null : conversation.Shop?.Name,
+            rendered.Subject, rendered.Html, rendered.Text,
+            EmailKind.ConversationMessage, DedupeKey: $"conversation-message:{message.Id}",
+            UserId: toCustomer ? conversation.UserId : conversation.Shop?.OwnerUserId,
+            OrderId: conversation.OrderId), ct);
     }
 
     public Task NotifyPayoutIssuedAsync(VendorPayout payout, CancellationToken ct = default)

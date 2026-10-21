@@ -216,6 +216,11 @@
             </button>
         </form>
 
+        <a class="btn btn-outline-secondary btn-sm mb-4"
+           asp-controller="Messages" asp-action="Start" asp-route-shopId="@product.ShopId">
+            Ask the shop about this product
+        </a>
+
         <dl class="row small mb-4">
             <dt class="col-sm-4 text-muted fw-normal">SKU</dt>
             <dd class="col-sm-8 mb-1" id="skuValue">@(defaultVariant?.Sku ?? "—")</dd>

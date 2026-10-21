@@ -70,6 +70,13 @@
                         <a href="@shop.Website" target="_blank" rel="noopener">@shop.Website</a>
                     }
                 </div>
+                <div class="mt-2">
+                    <a class="btn btn-light btn-sm"
+                       asp-controller="Messages" asp-action="Start" asp-route-shopId="@shop.Id">
+                        Message the shop
+                    </a>
+                    <span class="small ms-2">Questions about stock or delivery? Ask before you buy.</span>
+                </div>
             </div>
         </div>
     </section>

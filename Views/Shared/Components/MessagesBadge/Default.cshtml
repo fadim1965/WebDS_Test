@@ -1,0 +1,10 @@
+@model WebDS_Test.ViewComponents.MessagesBadgeModel
+
+@*
+    Unread pill on the header's Messages link, rendered by MessagesBadgeViewComponent so the count
+    is always live. Empty for a guest or a shopper with nothing waiting.
+*@
+@if (Model.Unread > 0)
+{
+    <span class="badge text-bg-danger">@Model.Unread</span>
+}

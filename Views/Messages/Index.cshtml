@@ -1,0 +1,62 @@
+@model WebDS_Test.Models.ConversationInboxViewModel
+@{
+    ViewData["Title"] = "Messages";
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Messages</h1>
+            <p class="text-muted mb-0">
+                Your conversations with the shops you contacted, newest activity first.
+            </p>
+        </div>
+        @if (Model.Unread > 0)
+        {
+            <span class="badge text-bg-danger">@Model.Unread unread</span>
+        }
+    </div>
+
+    @if (Model.Conversations.Count == 0)
+    {
+        <div class="alert alert-light border mt-3">
+            No messages yet. Open a shop's page and press <strong>Message the shop</strong> to ask
+            a question before you buy — the shop answers here.
+        </div>
+    }
+    else
+    {
+        <div class="list-group mt-3">
+            @foreach (var conversation in Model.Conversations)
+            {
+                // Unread means the other side wrote after the last time this thread was opened.
+                var unread = conversation.LastAuthor != ConversationAuthor.Customer
+                    && conversation.LastMessageUtc > (conversation.CustomerLastReadUtc ?? DateTime.MinValue);
+
+                <a class="list-group-item list-group-item-action" asp-action="Details" asp-route-id="@conversation.Id">
+                    <div class="d-flex w-100 justify-content-between align-items-start gap-2">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            @if (unread)
+                            {
+                                <span class="badge text-bg-danger">New</span>
+                            }
+                            <strong>@(conversation.Shop?.Name ?? "Shop")</strong>
+                            <span class="small text-muted">@conversation.Reference</span>
+                        </div>
+                        <small class="text-nowrap text-muted">@conversation.LastMessageUtc.ToString("yyyy-MM-dd HH:mm")</small>
+                    </div>
+                    <div class="fw-semibold mt-1">@conversation.Subject</div>
+                    <div class="small text-muted text-truncate">@conversation.LastMessagePreview</div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                        <span class="badge @conversation.Status.ToCssClass()">@conversation.Status.ToDisplay()</span>
+                        @if (conversation.Order is not null)
+                        {
+                            <span class="small text-muted">About order @conversation.Order.OrderNumber</span>
+                        }
+                        <span class="small text-muted">by @conversation.LastAuthor.ToDisplay()</span>
+                    </div>
+                </a>
+            }
+        </div>
+    }
+</div>

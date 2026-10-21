@@ -11,8 +11,13 @@ namespace WebDS_Test.Areas.Vendor.Controllers;
 public class DashboardController : Controller
 {
     private readonly IShopService _shops;
+    private readonly IConversationService _conversations;
 
-    public DashboardController(IShopService shops) => _shops = shops;
+    public DashboardController(IShopService shops, IConversationService conversations)
+    {
+        _shops = shops;
+        _conversations = conversations;
+    }
 
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -31,6 +36,8 @@ public class DashboardController : Controller
         var dashboard = await _shops.GetDashboardAsync(shop.Id, ct);
         ViewData["Title"] = "Vendor dashboard";
         ViewData["Shop"] = shop;
+        // Threads waiting on an answer, shown as a pill on the dashboard's Messages button.
+        ViewData["UnreadMessages"] = await _conversations.CountUnreadForShopAsync(shop.Id, ct);
         return View(dashboard);
     }
 }

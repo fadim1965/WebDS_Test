@@ -260,3 +260,58 @@ public sealed class SimulatorPaymentViewModel
     /// <summary>Where the shopper goes once the simulated payment is settled.</summary>
     public string? ReturnUrl { get; set; }
 }
+
+// ------------------------------------------------------------------
+// Conversations (shopper <-> shop)
+// ------------------------------------------------------------------
+
+/// <summary>Backing model for the shopper's conversation inbox.</summary>
+public sealed class ConversationInboxViewModel
+{
+    public IReadOnlyList<Conversation> Conversations { get; init; } = Array.Empty<Conversation>();
+
+    /// <summary>Threads with something new since the shopper last opened one.</summary>
+    public int Unread { get; init; }
+}
+
+/// <summary>
+/// The "start a conversation" form. Bound from a POST, so the fields carry the same validation the
+/// service applies server-side; the service remains the authority.
+/// </summary>
+public sealed class ConversationStartForm
+{
+    public int ShopId { get; set; }
+
+    /// <summary>Optional order the question is about, carried from the order page.</summary>
+    public int? OrderId { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Give the message a subject.")]
+    [System.ComponentModel.DataAnnotations.StringLength(200, ErrorMessage = "Keep the subject under 200 characters.")]
+    public string Subject { get; set; } = string.Empty;
+
+    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Write a message.")]
+    [System.ComponentModel.DataAnnotations.StringLength(4000, ErrorMessage = "Keep the message under 4000 characters.")]
+    public string Body { get; set; } = string.Empty;
+}
+
+/// <summary>One reply box on a conversation thread.</summary>
+public sealed class ConversationReplyForm
+{
+    public int ConversationId { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Write a message.")]
+    [System.ComponentModel.DataAnnotations.StringLength(4000, ErrorMessage = "Keep the message under 4000 characters.")]
+    public string Body { get; set; } = string.Empty;
+}
+
+/// <summary>Backing model for a conversation thread, which is rendered from either side.</summary>
+public sealed class ConversationThreadViewModel
+{
+    public Conversation Conversation { get; init; } = null!;
+
+    /// <summary>True when the reader is the shopper, false for the shop or the marketplace.</summary>
+    public bool IsCustomerView { get; init; }
+
+    /// <summary>Where the shopper's "back" link goes; the vendor view links to its own worklist.</summary>
+    public bool CanReply => Conversation.IsOpen;
+}

@@ -1,0 +1,83 @@
+@model WebDS_Test.Models.ConversationThreadViewModel
+@{
+    var conversation = Model.Conversation;
+    var shop = conversation.Shop;
+    ViewData["Title"] = conversation.Subject;
+}
+
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Messages</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@conversation.Reference</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">@conversation.Subject</h1>
+            <p class="text-muted mb-0">
+                With <a asp-controller="Shops" asp-action="Details" asp-route-slug="@(shop?.Slug ?? "")">@(shop?.Name ?? "the shop")</a>
+                &middot; @conversation.Reference
+                &middot; opened @conversation.CreatedUtc.ToString("yyyy-MM-dd")
+                &middot; <span class="badge @conversation.Status.ToCssClass()">@conversation.Status.ToDisplay()</span>
+                @if (conversation.Order is not null)
+                {
+                    <text>&middot; about order <a asp-controller="Orders" asp-action="Details" asp-route-id="@conversation.OrderId">@conversation.Order.OrderNumber</a></text>
+                }
+            </p>
+        </div>
+        @if (conversation.IsOpen)
+        {
+            <form asp-action="Close" asp-route-id="@conversation.Id" method="post">
+                <button type="submit" class="btn btn-outline-secondary btn-sm"
+                        onclick="return confirm('Close this conversation? Nobody can write to it again.');">
+                    Close conversation
+                </button>
+            </form>
+        }
+    </div>
+
+    <div class="mt-3 d-flex flex-column gap-2">
+        @foreach (var message in conversation.Messages.OrderBy(m => m.SentUtc).ThenBy(m => m.Id))
+        {
+            var mine = message.Author == ConversationAuthor.Customer;
+            <div class="d-flex @(mine ? "justify-content-end" : "justify-content-start")">
+                <div class="card @(mine ? "border-primary-subtle" : "")" style="max-width:min(680px,100%)">
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex justify-content-between gap-3 small text-muted">
+                            <span class="fw-semibold text-body">
+                                @(string.IsNullOrWhiteSpace(message.SenderName) ? (mine ? "You" : "Shop") : message.SenderName)
+                            </span>
+                            <span class="text-nowrap">@message.SentUtc.ToString("yyyy-MM-dd HH:mm") UTC</span>
+                        </div>
+                        <div class="mt-1" style="white-space: pre-line">@message.Body</div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (Model.CanReply)
+    {
+        <div class="card mt-3">
+            <div class="card-header bg-white fw-semibold">Reply</div>
+            <div class="card-body">
+                <form asp-action="Reply" method="post">
+                    <input type="hidden" name="ConversationId" value="@conversation.Id" />
+                    <label for="replyBody" class="form-label small fw-semibold">Your message</label>
+                    <textarea id="replyBody" name="Body" rows="4" class="form-control mb-2"
+                              maxlength="4000" required
+                              placeholder="Write a reply — the shop is emailed when you send it."></textarea>
+                    <button type="submit" class="btn btn-primary btn-sm">Send reply</button>
+                </form>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-light border mt-3 mb-0">
+            This conversation is closed. Nothing more can be written to it.
+        </div>
+    }
+</div>

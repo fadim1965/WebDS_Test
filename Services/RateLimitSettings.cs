@@ -1,9 +1,9 @@
 namespace WebDS_Test.Services;
 
 /// <summary>
-/// Throttling for the endpoints worth protecting — sign-in, checkout, review posting and the payment
-/// webhook. Bound from the <c>RateLimiting</c> configuration section so the limits can be tuned
-/// without a deployment.
+/// Throttling for the endpoints worth protecting — sign-in, checkout, review posting, messaging a
+/// shop and the payment webhook. Bound from the <c>RateLimiting</c> configuration section so the
+/// limits can be tuned without a deployment.
 /// </summary>
 public sealed class RateLimitSettings
 {
@@ -20,6 +20,9 @@ public sealed class RateLimitSettings
 
     /// <summary>Posting a review or a review vote.</summary>
     public RateLimitRule Review { get; set; } = new() { PermitLimit = 30, WindowSeconds = 60 };
+
+    /// <summary>Starting a conversation with a shop and replying to one.</summary>
+    public RateLimitRule Messaging { get; set; } = new() { PermitLimit = 20, WindowSeconds = 60 };
 
     /// <summary>
     /// Payment-provider webhooks. Generous, because a provider retrying a delivery must not be
@@ -42,5 +45,6 @@ public static class RateLimitPolicies
     public const string Auth = "auth";
     public const string Checkout = "checkout";
     public const string Review = "review";
+    public const string Messaging = "messaging";
     public const string Webhook = "webhook";
 }

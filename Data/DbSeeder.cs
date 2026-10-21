@@ -62,6 +62,10 @@ public static class DbSeeder
         // administrative action, so it must exist before the app starts serving.
         await AuditSchema.EnsureAsync(db, ct);
 
+        // Customer <-> vendor conversations postdate the store as well; the inbox and the vendor
+        // worklist both query them from the first page load.
+        await ConversationSchema.EnsureAsync(db, ct);
+
         // One standard-rate class so the feature is usable and visible on a fresh store. Products are
         // left unassigned on purpose: an unassigned product falls back to Store:TaxRate, which is the
         // behaviour every order had before this feature existed.

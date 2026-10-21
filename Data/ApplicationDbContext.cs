@@ -63,6 +63,10 @@ public class ApplicationDbContext : DbContext
     // Messaging
     public DbSet<EmailMessage> EmailMessages => Set<EmailMessage>();
 
+    // Customer <-> vendor conversations
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<ConversationMessage> ConversationMessages => Set<ConversationMessage>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -567,6 +571,46 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(m => m.DedupeKey);
             e.HasIndex(m => m.UserId);
             e.HasIndex(m => m.OrderId);
+        });
+
+        // ---------------------------------------------------------------
+        // Customer <-> vendor conversations
+        // ---------------------------------------------------------------
+
+        b.Entity<Conversation>(e =>
+        {
+            e.HasIndex(c => c.Reference).IsUnique();
+            e.HasIndex(c => c.ShopId);
+            e.HasIndex(c => c.UserId);
+            e.HasIndex(c => c.Status);
+            // The inbox is ordered by activity: "what needs me most recently" is the only sort
+            // either side ever asks for.
+            e.HasIndex(c => c.LastMessageUtc);
+            e.HasOne(c => c.Shop)
+                .WithMany()
+                .HasForeignKey(c => c.ShopId)
+                .OnDelete(DeleteBehavior.Restrict);
+            // A conversation outlives the order and the account it mentions, the way a return
+            // does: it is history, and history is kept.
+            e.HasOne(c => c.Order)
+                .WithMany()
+                .HasForeignKey(c => c.OrderId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<ConversationMessage>(e =>
+        {
+            e.HasIndex(m => m.ConversationId);
+            e.HasIndex(m => m.SentUtc);
+            // Messages die with their thread; nothing else points at them.
+            e.HasOne(m => m.Conversation)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(m => m.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<Coupon>(e =>
