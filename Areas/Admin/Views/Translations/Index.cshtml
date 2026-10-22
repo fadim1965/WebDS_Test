@@ -1,0 +1,188 @@
+@model WebDS_Test.Areas.Admin.Controllers.TranslationsController.TranslationListViewModel
+@{
+    ViewData["Title"] = "Translations";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Translations</h2>
+        <p class="text-muted small mb-0">
+            The strings the storefront shows in each language. A change takes effect on the next
+            page load. A key this language has no text for falls back to English, so leaving one
+            blank is safe — it shows the shopper English rather than a raw key.
+        </p>
+    </div>
+</div>
+
+<ul class="nav nav-pills mb-3">
+    @foreach (var lang in Model.Languages)
+    {
+        <li class="nav-item">
+            <a class="nav-link @(lang.IsSelected ? "active" : "")"
+               asp-action="Index"
+               asp-route-culture="@lang.Code"
+               asp-route-q="@Model.Search">
+                @lang.NativeName
+                <span class="small @(lang.IsSelected ? "text-white-50" : "text-muted")">@lang.Name</span>
+            </a>
+        </li>
+    }
+</ul>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="Index" class="row g-2 align-items-end">
+            <input type="hidden" name="culture" value="@Model.Culture" />
+            <div class="col-12 col-md-8">
+                <label class="form-label small mb-1" for="q">Search keys and text</label>
+                <input id="q" name="q" value="@Model.Search" class="form-control form-control-sm"
+                       placeholder="e.g. cart, shipping, controller.checkout" />
+            </div>
+            <div class="col-12 col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Search</button>
+                @if (!string.IsNullOrWhiteSpace(Model.Search))
+                {
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-culture="@Model.Culture">Clear</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-8">
+        <div class="card">
+            <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <span class="fw-semibold">@Model.Culture</span>
+                <span class="small text-muted">
+                    @Model.TranslatedCount translated · @Model.MissingCount missing
+                    @if (!string.IsNullOrWhiteSpace(Model.Search))
+                    {
+                        <text>of @Model.TotalKeys keys</text>
+                    }
+                </span>
+            </div>
+
+            @if (Model.Rows.Count == 0)
+            {
+                <div class="card-body text-muted small">
+                    @if (!string.IsNullOrWhiteSpace(Model.Search))
+                    {
+                        <text>No key or text matches "@Model.Search".</text>
+                    }
+                    else
+                    {
+                        <text>No strings yet for this language. Add one below.</text>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Key</th>
+                                <th scope="col">Text</th>
+                                <th scope="col" class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Model.Rows)
+                            {
+                                <tr class="@(row.IsTranslated ? "" : "table-warning")">
+                                    <td style="min-width: 16rem;">
+                                        <div class="fw-semibold small font-monospace">@row.Key</div>
+                                        @if (!row.IsTranslated)
+                                        {
+                                            <span class="badge text-bg-warning">Not translated</span>
+                                        }
+                                        else if (row.UpdatedUtc is not null)
+                                        {
+                                            <div class="small text-muted">
+                                                @(row.UpdatedBy ?? "unknown") · @row.UpdatedUtc.Value.ToString("yyyy-MM-dd HH:mm") UTC
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <form method="post" asp-action="Save">
+                                            <input type="hidden" name="culture" value="@Model.Culture" />
+                                            <input type="hidden" name="key" value="@row.Key" />
+                                            <input name="value" class="form-control form-control-sm"
+                                                   value="@row.Value"
+                                                   placeholder="@row.EnglishValue"
+                                                   maxlength="2000" />
+                                            @if (!row.IsTranslated)
+                                            {
+                                                <div class="small text-muted mt-1">
+                                                    Falls back to: <span class="fst-italic">@row.EnglishValue</span>
+                                                </div>
+                                            }
+                                            <div class="mt-2">
+                                                <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                            </div>
+                                        </form>
+                                    </td>
+                                    <td class="text-end">
+                                        @if (row.IsTranslated)
+                                        {
+                                            <form method="post" asp-action="Delete" class="d-inline">
+                                                <input type="hidden" name="culture" value="@Model.Culture" />
+                                                <input type="hidden" name="key" value="@row.Key" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header bg-white fw-semibold">Add a string</div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    A new key is created for this language only. Add it to English as well if every
+                    language should carry it.
+                </p>
+                <form method="post" asp-action="Save">
+                    <input type="hidden" name="culture" value="@Model.Culture" />
+                    <div class="mb-2">
+                        <label class="form-label small mb-1" for="new-key">Key</label>
+                        <input id="new-key" name="key" class="form-control form-control-sm font-monospace"
+                               placeholder="controller.checkout" autocomplete="off" maxlength="128" required />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small mb-1" for="new-value">Text</label>
+                        <textarea id="new-value" name="value" rows="3" class="form-control form-control-sm"
+                                  placeholder="The text shown to shoppers" maxlength="2000"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary">Add string</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white fw-semibold">How this works</div>
+            <div class="card-body small text-muted">
+                <p class="mb-2">
+                    Strings are stored in the database, so they survive a rebuild and are versioned
+                    with the store. The shipped catalogues are copied in once, on the first start.
+                </p>
+                <p class="mb-2">
+                    Deleting a string for a language removes the translation, not the key: the
+                    storefront shows the English text instead.
+                </p>
+                <p class="mb-0">
+                    Adding a language itself is a configuration entry
+                    (<code>Languages:Supported</code>), not something this screen changes.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

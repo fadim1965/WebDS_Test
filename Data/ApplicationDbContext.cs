@@ -70,6 +70,9 @@ public class ApplicationDbContext : DbContext
     // Settings administration can change without a deployment (exchange rate, ...)
     public DbSet<SiteSetting> SiteSettings => Set<SiteSetting>();
 
+    // Editable UI strings, seeded from App_Data/i18n and maintained by administration
+    public DbSet<Translation> Translations => Set<Translation>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -621,6 +624,14 @@ public class ApplicationDbContext : DbContext
             // One row per key: the store reads the whole table into a small dictionary, and the
             // unique index is what makes a concurrent duplicate write fail instead of doubling.
             e.HasIndex(s => s.Key).IsUnique();
+        });
+
+        b.Entity<Translation>(e =>
+        {
+            // A key is unique within a language. The store reads the table into a nested
+            // culture -> key dictionary; the unique index is what turns a duplicate save into a
+            // failure rather than a second row that silently shadows the first.
+            e.HasIndex(t => new { t.Culture, t.Key }).IsUnique();
         });
 
         b.Entity<Coupon>(e =>

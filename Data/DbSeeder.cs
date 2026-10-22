@@ -70,6 +70,11 @@ public static class DbSeeder
         // admin settings screen and the currency formatter read the table on every request.
         await SettingsSchema.EnsureAsync(db, ct);
 
+        // Editable translations postdate the store as well. The table must exist before the shipped
+        // catalogues are copied into it, and before the translator queries it on the first request.
+        await TranslationSchema.EnsureAsync(db, ct);
+        await TranslationSeeder.SeedAsync(db, ct);
+
         // One standard-rate class so the feature is usable and visible on a fresh store. Products are
         // left unassigned on purpose: an unassigned product falls back to Store:TaxRate, which is the
         // behaviour every order had before this feature existed.

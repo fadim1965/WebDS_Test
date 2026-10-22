@@ -8,8 +8,13 @@ obj/
 appsettings.Local.json
 appsettings.Local.*.json
 
-## SQLite database created on first run
-App_Data/
+## SQLite database created on first run. The translation catalogues under App_Data/i18n are the
+## exception: they are the seed the Translations table is filled from, so they are versioned with
+## the store. A clone without them would have no strings at all.
+App_Data/*
+!App_Data/i18n/
+App_Data/i18n/*
+!App_Data/i18n/*.txt
 *.db
 *.db-shm
 *.db-wal

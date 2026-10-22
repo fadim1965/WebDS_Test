@@ -172,10 +172,14 @@ builder.Services.AddScoped<WebDS_Test.Services.Imports.IProductImportService, We
 // preview and the order that is actually placed cannot disagree about what is owed.
 builder.Services.AddSingleton<ITaxCalculator, TaxCalculator>();
 
-// Languages. The translator reads App_Data/i18n/*.txt, so adding a language is a file and one
-// configuration entry. Arabic is right-to-left and the layout flips for it.
+// Languages. The translator resolves strings from the database-backed catalogue (seeded from
+// App_Data/i18n/*.txt), so adding a language is still a configuration entry and editing a string is
+// an administrative action. Arabic is right-to-left and the layout flips for it.
 builder.Services.Configure<LanguageOptions>(builder.Configuration.GetSection(LanguageOptions.SectionName));
 builder.Services.AddHttpContextAccessor();
+// The catalogue is cached application-wide so a Razor render is a dictionary lookup rather than a
+// query per string. Registered before the translator, which reads it per lookup.
+builder.Services.AddSingleton<ITranslationStore, TranslationStore>();
 builder.Services.AddScoped<ITranslator, Translator>();
 
 // Vendors are settled through an append-only ledger. The writer is shared by checkout, fulfilment
@@ -521,6 +525,11 @@ await using (var scope = app.Services.CreateAsyncScope())
         // dictionary lookup rather than a database hit. Reads fall back to configuration if this
         // step is ever skipped, so warming is an optimisation, not a correctness requirement.
         await services.GetRequiredService<ISiteSettingStore>().EnsureLoadedAsync();
+
+        // The translation catalogue is warmed for the same reason, and it matters a little more:
+        // until it is loaded the translator falls back to the shipped text files, so warming it is
+        // what makes an administrator's edit the value the storefront actually serves.
+        await services.GetRequiredService<ITranslationStore>().EnsureLoadedAsync();
 
         // The sink writes to the Log table. EnsureCreated builds the whole schema only when the
         // store is empty, so this covers a store that predates the sink — the SQLite development

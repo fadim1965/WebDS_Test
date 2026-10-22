@@ -62,15 +62,25 @@ public sealed class Translator : ITranslator
     private static readonly IReadOnlyDictionary<string, string> Empty =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-    private readonly Dictionary<string, IReadOnlyDictionary<string, string>> _byCulture;
+    private readonly Lazy<Dictionary<string, IReadOnlyDictionary<string, string>>> _byCulture;
     private readonly LanguageOptions _options;
     private readonly string _culture;
 
-    public Translator(IOptions<LanguageOptions> options, IHttpContextAccessor http)
+    /// <summary>
+    /// The database-backed catalogue, when one is configured. It is the authority: the file catalogue
+    /// below is loaded as the seed (and as the whole catalogue when no store is injected), so a key
+    /// the store does not hold still resolves from the shipped text, and a store-side edit wins.
+    /// </summary>
+    private readonly ITranslationStore? _store;
+
+    public Translator(IOptions<LanguageOptions> options, IHttpContextAccessor http, ITranslationStore? store = null)
     {
         _options = options.Value;
-        _byCulture = LoadCatalog();
+        // The files are read only if a lookup misses the database, which is what makes the seeded
+        // catalogue a fallback rather than three disk reads on every request.
+        _byCulture = new Lazy<Dictionary<string, IReadOnlyDictionary<string, string>>>(LoadCatalog);
         _culture = ResolveCulture(http.HttpContext, _options);
+        _store = store;
     }
 
     public string Culture => _culture;
@@ -100,10 +110,22 @@ public sealed class Translator : ITranslator
 
     public bool Has(string key) => Lookup(_culture, key) is not null || Lookup("en", key) is not null;
 
-    private string? Lookup(string culture, string key) =>
-        _byCulture.TryGetValue(culture, out var table) && table.TryGetValue(key, out var value)
+    private string? Lookup(string culture, string key)
+    {
+        // The database is the authority once it holds the string. A key with no row falls back to
+        // the shipped file catalogue, so a store seeded before a new key existed still translates.
+        var stored = _store?.Get(culture, key);
+        if (stored is not null)
+        {
+            return stored;
+        }
+
+        var catalog = _byCulture.Value;
+
+        return catalog.TryGetValue(culture, out var table) && table.TryGetValue(key, out var value)
             ? value
             : null;
+    }
 
     /// <summary>
     /// Reads <c>App_Data/i18n/{code}.txt</c>, one <c>key=value</c> per line. A file that is missing or
