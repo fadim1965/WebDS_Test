@@ -1,10 +1,8 @@
 @model IReadOnlyList<Order>
-@using Microsoft.Extensions.Options
-@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @{
     ViewData["Title"] = "Your orders";
 
-    var currency = StoreOptions.Value.CurrencySymbol;
     var orders = Model ?? Array.Empty<Order>();
 }
 
@@ -62,7 +60,7 @@ else
 
                     <div class="col-md-3 text-md-end">
                         <div class="text-muted small">Order total</div>
-                        <div class="fw-bold">@currency@order.GrandTotal.ToString("N2")</div>
+                        <div class="fw-bold">@Money.Format(order.GrandTotal)</div>
                     </div>
 
                     <div class="col-md-3 text-md-end">

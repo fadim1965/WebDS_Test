@@ -22,6 +22,23 @@ public sealed class StoreSettings
     /// <summary>ISO code recorded against payments.</summary>
     public string Currency { get; set; } = "USD";
 
+    /// <summary>
+    /// Alternate display currency shown beside base prices as an indicative conversion
+    /// (today: Lebanese pounds). The base currency stays the money of record — charged,
+    /// refunded and settled amounts; the alternate figure is display-only arithmetic.
+    /// </summary>
+    public string AlternateCurrency { get; set; } = "LBP";
+
+    /// <summary>Abbreviation shown after the alternate figure, e.g. LL for Lebanese pounds.</summary>
+    public string AlternateCurrencySymbol { get; set; } = "LL";
+
+    /// <summary>
+    /// How many alternate units one base (USD) unit buys — the bootstrap default only. The
+    /// authoritative value lives in the site-settings table and is maintained on the admin
+    /// settings screen; a rate of zero or less switches the alternate figure off everywhere.
+    /// </summary>
+    public decimal AlternateRate { get; set; } = 89_500m;
+
     /// <summary>Flat delivery rate. Lebanon-wide delivery is a realistic default for this brand.</summary>
     public decimal FlatShippingRate { get; set; } = 4.50m;
 

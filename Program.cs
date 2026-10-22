@@ -184,6 +184,13 @@ builder.Services.AddScoped<IVendorLedgerService, VendorLedgerService>();
 builder.Services.AddScoped<IPayoutService, PayoutService>();
 builder.Services.Configure<PayoutOptions>(builder.Configuration.GetSection(PayoutOptions.SectionName));
 
+// Store-wide settings live in the database and are cached application-wide, so the admin
+// settings screen can change them (today: the USD/LBP display rate) without a deployment.
+builder.Services.AddSingleton<ISiteSettingStore, SiteSettingStore>();
+// Formatting money happens on every Razor render, so it must be synchronous and allocation-light;
+// it reads the cached settings per call, which is what makes an admin's rate change live instantly.
+builder.Services.AddSingleton<ICurrencyFormatter, CurrencyFormatter>();
+
 // Review policy (auto-publish, seller-badge thresholds) lives in configuration, so the
 // marketplace's rules can be tuned without a deployment.
 builder.Services.Configure<ReviewSettings>(builder.Configuration.GetSection(ReviewSettings.SectionName));
@@ -509,6 +516,11 @@ await using (var scope = app.Services.CreateAsyncScope())
             services.GetRequiredService<IPasswordHasher>(),
             app.Configuration,
             logger);
+
+        // Prime the settings cache after the schema exists, so the first storefront render is a
+        // dictionary lookup rather than a database hit. Reads fall back to configuration if this
+        // step is ever skipped, so warming is an optimisation, not a correctness requirement.
+        await services.GetRequiredService<ISiteSettingStore>().EnsureLoadedAsync();
 
         // The sink writes to the Log table. EnsureCreated builds the whole schema only when the
         // store is empty, so this covers a store that predates the sink — the SQLite development

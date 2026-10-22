@@ -1,10 +1,8 @@
 @model WebDS_Test.Areas.Vendor.Models.VendorPayoutDetailViewModel
-@inject IOptions<StoreSettings> StoreOptions
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @{
     var payout = Model.Payout;
     ViewData["Title"] = $"Payout {payout.Reference}";
-    var currency = StoreOptions.Value.CurrencySymbol;
-    string Money(decimal value) => currency + value.ToString("N2");
 }
 <div class="container py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
@@ -33,13 +31,13 @@
             <div class="text-muted small">Entries</div><div class="h4 mb-0">@payout.EntryCount</div>
         </div></div></div>
         <div class="col-md-3"><div class="card"><div class="card-body">
-            <div class="text-muted small">Gross</div><div class="h4 mb-0">@Money(payout.GrossAmount)</div>
+            <div class="text-muted small">Gross</div><div class="h4 mb-0">@Money.Format(payout.GrossAmount)</div>
         </div></div></div>
         <div class="col-md-3"><div class="card"><div class="card-body">
-            <div class="text-muted small">Commission</div><div class="h4 mb-0">@Money(payout.CommissionAmount)</div>
+            <div class="text-muted small">Commission</div><div class="h4 mb-0">@Money.Format(payout.CommissionAmount)</div>
         </div></div></div>
         <div class="col-md-3"><div class="card border-success"><div class="card-body">
-            <div class="text-muted small">Net paid</div><div class="h4 mb-0">@Money(payout.NetAmount)</div>
+            <div class="text-muted small">Net paid</div><div class="h4 mb-0">@Money.Format(payout.NetAmount)</div>
         </div></div></div>
     </div>
 
@@ -67,9 +65,9 @@
                         <td>@line.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
                         <td>@line.Type</td>
                         <td>@(line.OrderId?.ToString() ?? "—")</td>
-                        <td class="text-end">@Money(line.GrossAmount)</td>
-                        <td class="text-end">@Money(line.CommissionAmount)</td>
-                        <td class="text-end">@Money(line.NetAmount)</td>
+                        <td class="text-end">@Money.Format(line.GrossAmount)</td>
+                        <td class="text-end">@Money.Format(line.CommissionAmount)</td>
+                        <td class="text-end">@Money.Format(line.NetAmount)</td>
                         <td class="text-muted small">@line.Note</td>
                     </tr>
                 }

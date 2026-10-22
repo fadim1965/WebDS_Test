@@ -1,10 +1,8 @@
 @model IReadOnlyList<WishlistItem>
-@using Microsoft.Extensions.Options
-@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @{
     ViewData["Title"] = "Your wishlist";
 
-    var currency = StoreOptions.Value.CurrencySymbol;
     var entries = Model ?? Array.Empty<WishlistItem>();
 }
 
@@ -93,7 +91,7 @@ else
 
                         <div class="mt-auto">
                             <div class="d-flex align-items-baseline gap-2 mb-1">
-                                <span class="price-now">@currency@price.ToString("N2")</span>
+                                <span class="price-now">@Money.Format(price)</span>
                                 @if (product.HasPriceRange)
                                 {
                                     <span class="small text-muted">and up</span>

@@ -1,0 +1,114 @@
+@model WebDS_Test.Areas.Admin.Controllers.SettingsController.CurrencySettingsViewModel
+@{
+    ViewData["Title"] = "Store settings";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Store settings</h2>
+        <p class="text-muted small mb-0">
+            Store-wide values that can change without a deployment. Everything money-shaped is
+            charged, refunded and settled in US dollars; the alternate figure below is a
+            display-only conversion.
+        </p>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-7">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">Alternate display currency</div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    Shoppers see this figure beside every USD price as
+                    <code>$24.50 · ≈2,192,750 LL</code>. It never takes part in arithmetic —
+                    carts, taxes, refunds and payouts all compute in USD.
+                </p>
+
+                <form method="post" asp-area="Admin" asp-controller="Settings" asp-action="Index">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+
+                    <div class="row g-3">
+                        <div class="col-sm-4">
+                            <label asp-for="AlternateCurrency" class="form-label"></label>
+                            <input asp-for="AlternateCurrency" class="form-control" autocomplete="off" maxlength="3" />
+                            <span asp-validation-for="AlternateCurrency" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-4">
+                            <label asp-for="AlternateCurrencySymbol" class="form-label"></label>
+                            <input asp-for="AlternateCurrencySymbol" class="form-control" autocomplete="off" maxlength="8" />
+                            <span asp-validation-for="AlternateCurrencySymbol" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-4">
+                            <label asp-for="AlternateRate" class="form-label"></label>
+                            <div class="input-group">
+                                <input asp-for="AlternateRate" class="form-control" inputmode="decimal" autocomplete="off" />
+                                <span class="input-group-text">per $1</span>
+                            </div>
+                            <span asp-validation-for="AlternateRate" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">Save settings</button>
+                    </div>
+                </form>
+
+                <hr class="my-3" />
+
+                @if (Model.IsOverridden)
+                {
+                    <p class="small text-muted mb-0">
+                        Overridden in the database@(Model.LastUpdatedBy is null ? "" : $" by {Model.LastUpdatedBy}")@(Model.LastUpdatedUtc is null ? "" : $" at {Model.LastUpdatedUtc:yyyy-MM-dd HH:mm} UTC").
+                        Removing the rows reverts to the configuration defaults.
+                    </p>
+                }
+                else
+                {
+                    <p class="small text-muted mb-0">
+                        Currently using the configuration defaults from <code>appsettings.json</code>.
+                        Saving writes the values to the database, where they take effect immediately.
+                    </p>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">How prices will look</div>
+            <div class="card-body">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Charged (USD)</th>
+                            <th scope="col" class="text-end">Shoppers also see</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Preview)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@row.BaseText</td>
+                                <td class="text-end">
+                                    @if (row.AlternateText.Length == 0)
+                                    {
+                                        <span class="text-muted small">— (alternate figure off)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>≈@row.AlternateText</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

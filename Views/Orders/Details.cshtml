@@ -1,6 +1,7 @@
 @model Order
 @using Microsoft.Extensions.Options
 @inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @functions {
     private static string StepClass(bool done, bool current) =>
         current ? "current" : (done ? "done" : string.Empty);
@@ -27,7 +28,6 @@
 @{
     ViewData["Title"] = $"Order {Model.OrderNumber}";
 
-    var currency = StoreOptions.Value.CurrencySymbol;
     var order = Model;
     var status = order.Status;
 
@@ -55,7 +55,7 @@
         <p class="text-muted small mb-0">
             Placed @order.PlacedUtc.ToString("d MMM yyyy HH:mm") UTC ·
             @order.TotalQuantity item@(order.TotalQuantity == 1 ? string.Empty : "s") ·
-            @currency@order.GrandTotal.ToString("N2")
+            @Money.Format(order.GrandTotal)
         </p>
     </div>
     <a class="btn btn-outline-secondary" asp-controller="Orders" asp-action="Index">Back to your orders</a>
@@ -156,9 +156,9 @@ else if (stopped)
                                         </div>
                                     </td>
                                     <td class="text-muted small">@line.Sku</td>
-                                    <td class="text-end">@currency@line.UnitPrice.ToString("N2")</td>
+                                    <td class="text-end">@Money.Format(line.UnitPrice)</td>
                                     <td class="text-center">@line.Quantity</td>
-                                    <td class="text-end fw-semibold">@currency@line.LineTotal.ToString("N2")</td>
+                                    <td class="text-end fw-semibold">@Money.Format(line.LineTotal)</td>
                                 </tr>
                             }
                         </tbody>
@@ -200,7 +200,7 @@ else if (stopped)
                                     }
                                 </div>
                                 <div class="text-end">
-                                    <div class="fw-semibold">@currency@payment.Amount.ToString("N2")</div>
+                                    <div class="fw-semibold">@Money.Format(payment.Amount)</div>
                                     <div class="small text-muted">@payment.Currency</div>
                                 </div>
                             </li>
@@ -217,7 +217,7 @@ else if (stopped)
                 <h2 class="h5 mb-3">Summary</h2>
                 <dl class="row mb-0">
                     <dt class="col-7 fw-normal text-muted">Subtotal</dt>
-                    <dd class="col-5 text-end">@currency@order.Subtotal.ToString("N2")</dd>
+                    <dd class="col-5 text-end">@Money.Format(order.Subtotal)</dd>
 
                     <dt class="col-7 fw-normal text-muted">Shipping</dt>
                     <dd class="col-5 text-end">
@@ -227,21 +227,21 @@ else if (stopped)
                         }
                         else
                         {
-                            <span>@currency@order.ShippingTotal.ToString("N2")</span>
+                            <span>@Money.Format(order.ShippingTotal)</span>
                         }
                     </dd>
 
                     <dt class="col-7 fw-normal text-muted">Tax</dt>
-                    <dd class="col-5 text-end">@currency@order.TaxTotal.ToString("N2")</dd>
+                    <dd class="col-5 text-end">@Money.Format(order.TaxTotal)</dd>
 
                     @if (order.DiscountTotal > 0m)
                     {
                         <dt class="col-7 fw-normal text-muted">Discount</dt>
-                        <dd class="col-5 text-end text-success">−@currency@order.DiscountTotal.ToString("N2")</dd>
+                        <dd class="col-5 text-end text-success">−@Money.Format(order.DiscountTotal)</dd>
                     }
 
                     <dt class="col-7 fw-semibold border-top pt-2">Total</dt>
-                    <dd class="col-5 text-end fw-bold border-top pt-2">@currency@order.GrandTotal.ToString("N2")</dd>
+                    <dd class="col-5 text-end fw-bold border-top pt-2">@Money.Format(order.GrandTotal)</dd>
                 </dl>
             </div>
         </div>
@@ -299,7 +299,7 @@ else if (stopped)
                                     </div>
                                     @if (item.Status == WebDS_Test.Domain.ReturnStatus.Refunded)
                                     {
-                                        <div class="small">Refunded @currency@item.RefundAmount.ToString("N2")</div>
+                                        <div class="small">Refunded @Money.Format(item.RefundAmount)</div>
                                     }
                                 </div>
                                 <span class="badge @item.Status.ToCssClass()">@item.Status.ToDisplay()</span>

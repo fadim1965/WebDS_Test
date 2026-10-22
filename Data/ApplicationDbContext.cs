@@ -67,6 +67,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<ConversationMessage> ConversationMessages => Set<ConversationMessage>();
 
+    // Settings administration can change without a deployment (exchange rate, ...)
+    public DbSet<SiteSetting> SiteSettings => Set<SiteSetting>();
+
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
@@ -611,6 +614,13 @@ public class ApplicationDbContext : DbContext
                 .WithMany(c => c.Messages)
                 .HasForeignKey(m => m.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<SiteSetting>(e =>
+        {
+            // One row per key: the store reads the whole table into a small dictionary, and the
+            // unique index is what makes a concurrent duplicate write fail instead of doubling.
+            e.HasIndex(s => s.Key).IsUnique();
         });
 
         b.Entity<Coupon>(e =>

@@ -1,8 +1,8 @@
 @model CheckoutViewModel
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @{
     ViewData["Title"] = "Checkout";
     var cart = Model.Cart;
-    var currency = cart.Settings.CurrencySymbol;
     var hasAddresses = Model.SavedAddresses.Count > 0;
 }
 
@@ -162,28 +162,28 @@ else
                     <div class="card-body">
                         <div class="d-flex justify-content-between mb-1">
                             <span>Subtotal</span>
-                            <span>@currency@cart.Subtotal.ToString("N2")</span>
+                            <span>@Money.Format(cart.Subtotal)</span>
                         </div>
 
                         @if (cart.Discount > 0m)
                         {
                             <div class="d-flex justify-content-between mb-1 text-success">
                                 <span>Discount @(string.IsNullOrWhiteSpace(cart.AppliedCouponCode) ? string.Empty : $"({cart.AppliedCouponCode})")</span>
-                                <span>−@currency@cart.Discount.ToString("N2")</span>
+                                <span>−@Money.Format(cart.Discount)</span>
                             </div>
                         }
 
                         <div class="d-flex justify-content-between mb-1">
                             <span>Shipping</span>
-                            <span>@(cart.FinalShipping == 0m ? "Free" : currency + cart.FinalShipping.ToString("N2"))</span>
+                            <span>@(cart.FinalShipping == 0m ? "Free" : Money.Format(cart.FinalShipping))</span>
                         </div>
                         <div class="d-flex justify-content-between mb-1">
                             <span>Tax</span>
-                            <span>@currency@cart.FinalTax.ToString("N2")</span>
+                            <span>@Money.Format(cart.FinalTax)</span>
                         </div>
                         <div class="d-flex justify-content-between border-top pt-2 mt-2 fw-bold fs-5">
                             <span>Total</span>
-                            <span>@currency@cart.FinalTotal.ToString("N2")</span>
+                            <span>@Money.Format(cart.FinalTotal)</span>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 mt-3">Place order</button>

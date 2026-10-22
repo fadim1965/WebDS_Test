@@ -1,9 +1,7 @@
 @model WebDS_Test.Areas.Vendor.Models.VendorPayoutViewModel
-@inject IOptions<StoreSettings> StoreOptions
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @{
     ViewData["Title"] = "Payouts";
-    var currency = StoreOptions.Value.CurrencySymbol;
-    string Money(decimal value) => currency + value.ToString("N2");
     var outstanding = Model.Outstanding;
 }
 <div class="container py-4">
@@ -21,7 +19,7 @@
     <div class="row g-3 mt-3">
         <div class="col-md-3"><div class="card border-success"><div class="card-body">
             <div class="text-muted small">Outstanding</div>
-            <div class="h4 mb-0">@Money(outstanding?.Net ?? 0m)</div>
+            <div class="h4 mb-0">@Money.Format(outstanding?.Net ?? 0m)</div>
         </div></div></div>
         <div class="col-md-3"><div class="card"><div class="card-body">
             <div class="text-muted small">Unsettled entries</div>
@@ -29,11 +27,11 @@
         </div></div></div>
         <div class="col-md-3"><div class="card"><div class="card-body">
             <div class="text-muted small">Gross (unsettled)</div>
-            <div class="h4 mb-0">@Money(outstanding?.Gross ?? 0m)</div>
+            <div class="h4 mb-0">@Money.Format(outstanding?.Gross ?? 0m)</div>
         </div></div></div>
         <div class="col-md-3"><div class="card"><div class="card-body">
             <div class="text-muted small">Commission (unsettled)</div>
-            <div class="h4 mb-0">@Money(outstanding?.Commission ?? 0m)</div>
+            <div class="h4 mb-0">@Money.Format(outstanding?.Commission ?? 0m)</div>
         </div></div></div>
     </div>
 
@@ -96,9 +94,9 @@
                                 <div class="small text-muted">@payout.FailureReason</div>
                             }
                         </td>
-                        <td class="text-end">@Money(payout.GrossAmount)</td>
-                        <td class="text-end">@Money(payout.CommissionAmount)</td>
-                        <td class="text-end fw-semibold">@Money(payout.NetAmount)</td>
+                        <td class="text-end">@Money.Format(payout.GrossAmount)</td>
+                        <td class="text-end">@Money.Format(payout.CommissionAmount)</td>
+                        <td class="text-end fw-semibold">@Money.Format(payout.NetAmount)</td>
                         <td>@payout.Method</td>
                     </tr>
                 }
@@ -133,9 +131,9 @@
                             </span>
                         </td>
                         <td>@(entry.OrderId?.ToString() ?? "—")</td>
-                        <td class="text-end">@Money(entry.GrossAmount)</td>
-                        <td class="text-end">@Money(entry.CommissionAmount)</td>
-                        <td class="text-end">@Money(entry.NetAmount)</td>
+                        <td class="text-end">@Money.Format(entry.GrossAmount)</td>
+                        <td class="text-end">@Money.Format(entry.CommissionAmount)</td>
+                        <td class="text-end">@Money.Format(entry.NetAmount)</td>
                         <td>
                             @if (entry.SettledUtc is { } settled)
                             {

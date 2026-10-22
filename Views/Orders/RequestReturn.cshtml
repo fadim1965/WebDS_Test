@@ -1,10 +1,7 @@
 @model WebDS_Test.Controllers.RequestReturnViewModel
-@inject Microsoft.Extensions.Options.IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @{
     ViewData["Title"] = $"Request a return — order {Model.OrderNumber}";
-    var currency = StoreOptions.Value.CurrencySymbol;
-
-    string Money(decimal value) => currency + value.ToString("N2");
 }
 
 <div class="container py-4">
@@ -65,7 +62,7 @@
                                         <div class="small text-muted">@line.VariantName</div>
                                     }
                                 </td>
-                                <td class="text-end text-nowrap">@line.OrderedQuantity × @Money(line.UnitPrice)</td>
+                                <td class="text-end text-nowrap">@line.OrderedQuantity × @Money.Format(line.UnitPrice)</td>
                                 <td class="text-end">@line.MaxQuantity</td>
                                 <td class="text-center">
                                     <input type="hidden" name="Lines[@i].OrderLineId" value="@line.OrderLineId" />

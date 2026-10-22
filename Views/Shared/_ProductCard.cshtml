@@ -1,8 +1,6 @@
 @model WebDS_Test.Services.ProductCard
-@using Microsoft.Extensions.Options
-@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @{
-    var currency = StoreOptions.Value.CurrencySymbol;
     var card = Model;
 }
 <div class="card card-hover">
@@ -70,14 +68,14 @@
 
         <div class="mt-auto">
             <div class="d-flex align-items-baseline gap-2 mb-2">
-                <span class="price-now">@currency@card.Price.ToString("N2")</span>
+                <span class="price-now">@Money.Format(card.Price)</span>
                 @if (card.HasPriceRange)
                 {
                     <span class="small text-muted">and up</span>
                 }
                 @if (card.IsOnSale)
                 {
-                    <span class="price-was">@currency@card.CompareAtPrice.ToString("N2")</span>
+                    <span class="price-was">@Money.Format(card.CompareAtPrice)</span>
                 }
             </div>
 

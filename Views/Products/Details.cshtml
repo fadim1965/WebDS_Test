@@ -1,7 +1,6 @@
 @model ProductDetailViewModel
 @using System.Globalization
-@using Microsoft.Extensions.Options
-@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @functions {
     /* Two-letter monogram for the reviewer's avatar disc. */
     private static string Initials(string? name)
@@ -18,7 +17,6 @@
 @{
     ViewData["Title"] = Model.Product.Name;
 
-    var currency = StoreOptions.Value.CurrencySymbol;
     var product = Model.Product;
     var variants = Model.Variants;
     var defaultVariant = variants.FirstOrDefault(v => v.StockQuantity > 0) ?? variants.FirstOrDefault();
@@ -45,7 +43,7 @@
     </ol>
 </nav>
 
-<div class="row g-4" id="productDetail" data-currency="@currency">
+<div class="row g-4" id="productDetail" data-currency="@Money.BaseSymbol" data-alt-symbol="@Money.AlternateSymbol" data-alt-rate="@Money.AlternateRate.ToString("0.##", CultureInfo.InvariantCulture)">
     <div class="col-lg-6">
         <div class="product-thumb is-large mb-2" id="galleryMain">
             @if (primaryImage is not null && !string.IsNullOrEmpty(primaryImage.Url))
@@ -117,9 +115,9 @@
         }
 
         <div class="d-flex align-items-baseline flex-wrap gap-2 mb-2" aria-live="polite">
-            <span class="price-now fs-3" id="priceNow">@currency@defaultPrice.ToString("N2")</span>
+            <span class="price-now fs-3" id="priceNow">@Money.Format(defaultPrice)</span>
             <span class="price-was @(defaultCompareAt > 0m ? string.Empty : "d-none")" id="priceWas">
-                @currency@defaultCompareAt.ToString("N2")
+                @Money.Format(defaultCompareAt)
             </span>
             <span id="stockBadge" class="badge @(defaultStock < 1 ? "text-bg-secondary" : defaultStock <= defaultLowStock ? "text-bg-warning" : "text-bg-success")">
                 @if (defaultStock < 1)
@@ -140,7 +138,7 @@
         @if (product.HasPriceRange)
         {
             <p class="text-muted small mb-3">
-                Prices from @currency@Model.MinPrice.ToString("N2") depending on the option you choose.
+                Prices from @Money.Format(Model.MinPrice) depending on the option you choose.
             </p>
         }
 
@@ -176,7 +174,7 @@
                                    data-label="@variantLabel" />
                             <label class="form-check-label" for="variant-@variant.Id">
                                 <span class="fw-semibold">@variantLabel</span>
-                                <span class="text-muted">· @currency@variant.Price.ToString("N2")</span>
+                                <span class="text-muted">· @Money.Format(variant.Price)</span>
                                 @if (!isAvailable)
                                 {
                                     <span class="badge text-bg-secondary ms-1">Out of stock</span>
@@ -549,9 +547,19 @@
             }
 
             var currency = root.getAttribute('data-currency') || '';
+            var altSymbol = root.getAttribute('data-alt-symbol') || '';
+            var altRate = parseFloat(root.getAttribute('data-alt-rate') || '0');
 
+            // Mirrors ICurrencyFormatter.Format: base amount, then an indicative alternate figure
+            // when a rate is configured. Kept in step with the server so switching options never
+            // changes how a price is written.
             function money(value) {
-                return currency + Number(value).toFixed(2);
+                var text = currency + Number(value).toFixed(2);
+                if (altRate > 0 && altSymbol) {
+                    var alt = Math.round(Number(value) * altRate).toLocaleString('en-US');
+                    text += ' · ≈' + alt + ' ' + altSymbol;
+                }
+                return text;
             }
 
             // ---- gallery: swap the main image when a thumbnail is clicked ----

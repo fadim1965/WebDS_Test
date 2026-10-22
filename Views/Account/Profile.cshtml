@@ -1,10 +1,8 @@
 @model ProfileViewModel
-@using Microsoft.Extensions.Options
-@inject IOptions<WebDS_Test.Domain.StoreSettings> StoreOptions
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @{
     ViewData["Title"] = "Your account";
 
-    var currency = StoreOptions.Value.CurrencySymbol;
     var user = Model.User;
     var displayName = string.IsNullOrWhiteSpace(user.DisplayName) ? user.Email : user.DisplayName;
     var initials = string.Concat(displayName
@@ -69,7 +67,7 @@
                     <dd class="col-sm-8">@Model.OrderCount</dd>
 
                     <dt class="col-sm-4 fw-normal text-muted">Lifetime spend</dt>
-                    <dd class="col-sm-8">@currency@Model.LifetimeSpend.ToString("N2")</dd>
+                    <dd class="col-sm-8">@Money.Format(Model.LifetimeSpend)</dd>
                 </dl>
 
                 @if (user.IsLockedOut)

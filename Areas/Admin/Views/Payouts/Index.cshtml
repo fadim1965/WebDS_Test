@@ -1,8 +1,8 @@
 @model WebDS_Test.Areas.Admin.Models.AdminPayoutIndexViewModel
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @{
     ViewData["Title"] = "Payouts";
-}
-<div class="container-fluid py-3">
+}<div class="container-fluid py-3">
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
         <div>
             <h1 class="h4 mb-1">Vendor payouts</h1>
@@ -43,9 +43,9 @@
                         <td>@balance.ShopName</td>
                         <td><span class="badge @balance.Status.ToCssClass()">@balance.Status.ToDisplay()</span></td>
                         <td class="text-end">@balance.EntryCount</td>
-                        <td class="text-end">@Model.Currency@balance.Gross.ToString("N2")</td>
-                        <td class="text-end">@Model.Currency@balance.Commission.ToString("N2")</td>
-                        <td class="text-end fw-semibold">@Model.Currency@balance.Net.ToString("N2")</td>
+                        <td class="text-end">@Money.Format(balance.Gross)</td>
+                        <td class="text-end">@Money.Format(balance.Commission)</td>
+                        <td class="text-end fw-semibold">@Money.Format(balance.Net)</td>
                         <td class="text-end">
                             @if (balance.IsPayable)
                             {
@@ -92,9 +92,9 @@
                         <td>@payout.CreatedUtc.ToString("yyyy-MM-dd HH:mm")</td>
                         <td><span class="badge @payout.Status.ToCssClass()">@payout.Status.ToDisplay()</span></td>
                         <td class="text-end">@payout.EntryCount</td>
-                        <td class="text-end">@Model.Currency@payout.GrossAmount.ToString("N2")</td>
-                        <td class="text-end">@Model.Currency@payout.CommissionAmount.ToString("N2")</td>
-                        <td class="text-end">@Model.Currency@payout.NetAmount.ToString("N2")</td>
+                        <td class="text-end">@Money.Format(payout.GrossAmount)</td>
+                        <td class="text-end">@Money.Format(payout.CommissionAmount)</td>
+                        <td class="text-end">@Money.Format(payout.NetAmount)</td>
                         <td class="text-end">
                             <a class="btn btn-sm btn-outline-secondary"
                                asp-action="Statement" asp-route-id="@payout.Id" asp-route-format="csv">CSV</a>

@@ -1,4 +1,5 @@
 @model SimulatorPaymentViewModel
+@inject WebDS_Test.Services.ICurrencyFormatter Money
 @{
     ViewData["Title"] = "Secure payment";
     var order = Model.Order;
@@ -19,7 +20,7 @@
             <div class="card-body">
                 <dl class="row mb-3">
                     <dt class="col-6 fw-normal text-muted">Amount due</dt>
-                    <dd class="col-6 text-end fw-bold">@Model.CurrencySymbol@order.GrandTotal.ToString("N2")</dd>
+                    <dd class="col-6 text-end fw-bold">@Money.Format(order.GrandTotal)</dd>
                     <dt class="col-6 fw-normal text-muted">Merchant</dt>
                     <dd class="col-6 text-end">LibanPost eShop</dd>
                 </dl>
@@ -34,7 +35,7 @@
                     <input type="hidden" name="reference" value="@order.OrderNumber" />
                     <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
                     <button type="submit" name="outcome" value="succeed" class="btn btn-success w-100 mb-2">
-                        Pay @Model.CurrencySymbol@order.GrandTotal.ToString("N2")
+                        Pay @Money.Format(order.GrandTotal)
                     </button>
                     <button type="submit" name="outcome" value="decline" class="btn btn-outline-danger w-100">
                         Decline payment

@@ -66,6 +66,10 @@ public static class DbSeeder
         // worklist both query them from the first page load.
         await ConversationSchema.EnsureAsync(db, ct);
 
+        // Runtime settings (the USD/LBP display rate and its labels) postdate the store too; the
+        // admin settings screen and the currency formatter read the table on every request.
+        await SettingsSchema.EnsureAsync(db, ct);
+
         // One standard-rate class so the feature is usable and visible on a fresh store. Products are
         // left unassigned on purpose: an unassigned product falls back to Store:TaxRate, which is the
         // behaviour every order had before this feature existed.
