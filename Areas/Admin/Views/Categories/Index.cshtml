@@ -22,6 +22,7 @@
                     <th scope="col">Slug</th>
                     <th scope="col" class="text-end">Display order</th>
                     <th scope="col">Active</th>
+                    <th scope="col">Commission</th>
                     <th scope="col" class="text-end">Products</th>
                     <th scope="col" class="text-end">Actions</th>
                 </tr>
@@ -55,6 +56,17 @@
                                 <span class="badge text-bg-secondary">Inactive</span>
                             }
                         </td>
+                        <td>
+                            @if (row.Category.CommissionRate is { } rate)
+                            {
+                                <span class="badge text-bg-info">@(rate * 100m)%</span>
+                                <div class="form-text">Overrides shop rate</div>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Shop default</span>
+                            }
+                        </td>
                         <td class="text-end">
                             <a asp-area="Admin" asp-controller="Products" asp-action="Index" asp-route-categoryId="@row.Category.Id">@row.ProductCount</a>
                         </td>
@@ -79,7 +91,7 @@
                 @if (Model.Rows.Count == 0)
                 {
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
+                        <td colspan="7" class="text-center text-muted py-4">
                             No categories yet.
                             <a asp-area="Admin" asp-controller="Categories" asp-action="Create">Create the first one</a>.
                         </td>

@@ -58,6 +58,9 @@ public class CategoriesController : AdminControllerBase
             ParentId = category.ParentId,
             DisplayOrder = category.DisplayOrder,
             IsActive = category.IsActive,
+            CommissionRatePercent = category.CommissionRate.HasValue
+                ? Math.Round(category.CommissionRate.Value * 100m, 2)
+                : null,
             AllCategories = await Db.Categories.AsNoTracking()
                 .Where(c => c.Id != id)
                 .OrderBy(c => c.Name)
@@ -116,6 +119,9 @@ public class CategoriesController : AdminControllerBase
         category.ParentId = model.ParentId;
         category.DisplayOrder = model.DisplayOrder;
         category.IsActive = model.IsActive;
+        category.CommissionRate = model.CommissionRatePercent.HasValue
+            ? Math.Clamp(model.CommissionRatePercent.Value / 100m, 0m, 1m)
+            : null;
         category.Slug = await EnsureUniqueSlugAsync(model.Slug, model.Name, category.Id, ct);
 
         await Db.SaveChangesAsync(ct);

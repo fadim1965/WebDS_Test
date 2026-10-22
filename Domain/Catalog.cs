@@ -40,6 +40,16 @@ public class Category
     /// <summary>Inactive categories are hidden from the storefront but kept for history.</summary>
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// Optional commission rate for this category, as a fraction (0.10 = 10%). When set it overrides
+    /// the shop's default commission rate for products in this category.
+    /// </summary>
+    /// <remarks>
+    /// The marketplace can set a higher or lower rate per category (e.g. electronics 5%, fashion 15%).
+    /// A null value means "use the shop's rate". The value is clamped to 0..1 when read.
+    /// </summary>
+    public decimal? CommissionRate { get; set; }
+
     public ICollection<Product> Products { get; set; } = new List<Product>();
 }
 

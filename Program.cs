@@ -192,6 +192,10 @@ builder.Services.Configure<PayoutOptions>(builder.Configuration.GetSection(Payou
 // live. The service keeps the review state and the visible flag in step, so no controller has to.
 builder.Services.AddScoped<IListingModerationService, ListingModerationService>();
 
+// Per-category commission: a category can override the shop's default commission rate.
+// The ledger calculates commission per order line using the product's category rate.
+builder.Services.AddScoped<IVendorLedgerService, VendorLedgerService>();
+
 // Store-wide settings live in the database and are cached application-wide, so the admin
 // settings screen can change them (today: the USD/LBP display rate) without a deployment.
 builder.Services.AddSingleton<ISiteSettingStore, SiteSettingStore>();

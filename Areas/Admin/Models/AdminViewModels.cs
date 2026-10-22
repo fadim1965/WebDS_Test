@@ -129,6 +129,14 @@ public sealed class CategoryEditViewModel
     [Display(Name = "Active")]
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// Commission rate for this category, as a fraction (0.10 = 10%). Overrides the shop's
+    /// default commission rate when set. Leave empty to use the shop's rate.
+    /// </summary>
+    [Display(Name = "Commission rate (%)")]
+    [Range(0, 100, ErrorMessage = "Commission rate must be between 0 and 100.")]
+    public decimal? CommissionRatePercent { get; set; }
+
     public IReadOnlyList<Category> AllCategories { get; set; } = Array.Empty<Category>();
     public int ProductCount { get; set; }
     public bool IsNew => Id == 0;

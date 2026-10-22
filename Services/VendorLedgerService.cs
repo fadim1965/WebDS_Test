@@ -77,12 +77,58 @@ public sealed class VendorLedgerService : IVendorLedgerService
         var shop = await _db.Shops.AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == order.ShopId, ct);
 
-        var rate = Clamp(shop?.CommissionRate ?? VendorLedgerService.DefaultCommissionRate);
+        var shopRate = Clamp(shop?.CommissionRate ?? VendorLedgerService.DefaultCommissionRate);
 
         // Commission applies to goods only — the shipping the shopper paid is the carrier's, not the
         // vendor's, and is deliberately excluded from the base.
-        var gross = order.Subtotal;
-        var commission = Math.Round(gross * rate, 2, MidpointRounding.AwayFromZero);
+        // Calculate per-line so each product's category commission rate applies.
+        var lines = await _db.OrderLines.AsNoTracking()
+            .Where(l => l.OrderId == order.Id)
+            .Include(l => l.ProductVariant)
+                .ThenInclude(v => v!.Product)
+                    .ThenInclude(p => p!.Category)
+            .ToListAsync(ct);
+
+        decimal gross = order.Subtotal;
+        decimal commission = 0m;
+
+        if (lines.Count == 0)
+        {
+            // No order lines (e.g. legacy data): fall back to the whole subtotal at the
+            // shop's rate. This preserves backward compatibility.
+            commission = Math.Round(gross * shopRate, 2, MidpointRounding.AwayFromZero);
+        }
+        else
+        {
+            // Calculate commission per line using each product's category rate (or shop default).
+            // Also sum the line gross amounts to detect mismatches with the order subtotal.
+            decimal linesGross = 0m;
+
+            foreach (var line in lines)
+            {
+                var lineGross = line.UnitPrice * line.Quantity;
+                linesGross += lineGross;
+
+                var rate = shopRate;
+                if (line.ProductVariant?.Product?.Category?.CommissionRate is { } catRate)
+                {
+                    rate = Clamp(catRate);
+                }
+
+                commission += Math.Round(lineGross * rate, 2, MidpointRounding.AwayFromZero);
+            }
+
+            // If the order lines don't add up to the subtotal (legacy data, tests, or rounding),
+            // fall back to the simpler subtotal-based calculation to avoid surprising discrepancies.
+            if (Math.Abs(linesGross - gross) > 0.01m)
+            {
+                _logger.LogWarning(
+                    "RecordSaleAsync: order {OrderId} lines gross {LinesGross:N2} differs from subtotal {Subtotal:N2}; falling back to shop rate",
+                    order.Id, linesGross, gross);
+                commission = Math.Round(gross * shopRate, 2, MidpointRounding.AwayFromZero);
+            }
+        }
+
         var net = gross - commission;
 
         _db.VendorLedgerEntries.Add(new VendorLedgerEntry

@@ -79,6 +79,10 @@ public static class DbSeeder
         // exists, so they are added on demand before anything reads them.
         await ListingSchema.EnsureAsync(db, ct);
 
+        // Per-category commission postdates the store: the commission column sits on Categories,
+        // which already exists, so it is added on demand before anything reads it.
+        await CategoryCommissionSchema.EnsureAsync(db, ct);
+
         // One standard-rate class so the feature is usable and visible on a fresh store. Products are
         // left unassigned on purpose: an unassigned product falls back to Store:TaxRate, which is the
         // behaviour every order had before this feature existed.
