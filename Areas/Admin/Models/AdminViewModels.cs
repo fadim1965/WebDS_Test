@@ -72,6 +72,15 @@ public sealed class ProductEditViewModel
     [Display(Name = "Published")]
     public bool IsPublished { get; set; } = true;
 
+    /// <summary>
+    /// Where the listing sits in the marketplace's review process. Shown on the edit screen; it is
+    /// decided by the review queue, not by the form.
+    /// </summary>
+    public ListingStatus ModerationStatus { get; set; } = ListingStatus.Published;
+
+    /// <summary>Why an administrator turned the listing down, when they did. Shown, not set by the form.</summary>
+    public string? ModerationReason { get; set; }
+
     [Display(Name = "Featured")]
     public bool IsFeatured { get; set; }
 

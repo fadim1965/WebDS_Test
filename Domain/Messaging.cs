@@ -30,6 +30,7 @@ public static class EmailKind
     public const string ReturnRefunded = "return-refunded";
     public const string PayoutIssued = "payout-issued";
     public const string ShopStatus = "shop-status";
+    public const string ListingDecision = "listing-decision";
     public const string PasswordReset = "password-reset";
     public const string ConversationMessage = "conversation-message";
     public const string Test = "test";

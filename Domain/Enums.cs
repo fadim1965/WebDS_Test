@@ -1,5 +1,66 @@
 namespace WebDS_Test.Domain;
 
+/// <summary>
+/// Where a vendor's listing sits in the marketplace's review process.
+/// </summary>
+/// <remarks>
+/// <para>
+/// A vendor may not put a listing on sale by itself: the listing is submitted, an administrator
+/// approves or turns it down, and only an approved listing is visible to shoppers. The state a
+/// product had before moderation existed was "published", so that is the zero value — a store that
+/// predates this feature keeps every listing on sale, and a newly created listing has to be
+/// submitted.
+/// </para>
+/// <para>
+/// The visible-on-the-storeshop flag on the product and this state are kept in step by
+/// <c>ListingModerationService</c>: a listing is live exactly when it is published.
+/// </para>
+/// </remarks>
+public enum ListingStatus
+{
+    /// <summary>Live in the catalogue. The state every listing had before moderation existed.</summary>
+    Published = 0,
+
+    /// <summary>The vendor is still working on it. Not submitted, not visible.</summary>
+    Draft = 1,
+
+    /// <summary>Submitted for review. Waiting for an administrator. Not visible.</summary>
+    PendingReview = 2,
+
+    /// <summary>Turned down. The vendor sees the reason and may fix it and submit again.</summary>
+    Rejected = 3
+}
+
+public static class ListingStatusExtensions
+{
+    /// <summary>Human label used by badges in the vendor and admin areas.</summary>
+    public static string ToDisplay(this ListingStatus status) => status switch
+    {
+        ListingStatus.Published => "Published",
+        ListingStatus.Draft => "Draft",
+        ListingStatus.PendingReview => "Awaiting review",
+        ListingStatus.Rejected => "Rejected",
+        _ => status.ToString()
+    };
+
+    /// <summary>Bootstrap contextual colour for the label above.</summary>
+    public static string ToCssClass(this ListingStatus status) => status switch
+    {
+        ListingStatus.Published => "text-bg-success",
+        ListingStatus.Draft => "text-bg-secondary",
+        ListingStatus.PendingReview => "text-bg-warning",
+        ListingStatus.Rejected => "text-bg-danger",
+        _ => "text-bg-secondary"
+    };
+
+    /// <summary>
+    /// True while the listing is waiting on an administrator, so the vendor can be told it is in the
+    /// queue and cannot be edited into a sale in the meantime.
+    /// </summary>
+    public static bool AwaitingReview(this ListingStatus status) =>
+        status == ListingStatus.PendingReview;
+}
+
 /// <summary>Lifecycle of an order. Transitions are validated in <c>OrderService</c>.</summary>
 public enum OrderStatus
 {

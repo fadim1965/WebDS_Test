@@ -75,6 +75,10 @@ public static class DbSeeder
         await TranslationSchema.EnsureAsync(db, ct);
         await TranslationSeeder.SeedAsync(db, ct);
 
+        // Listing moderation postdates the store: the review columns sit on Products, which already
+        // exists, so they are added on demand before anything reads them.
+        await ListingSchema.EnsureAsync(db, ct);
+
         // One standard-rate class so the feature is usable and visible on a fresh store. Products are
         // left unassigned on purpose: an unassigned product falls back to Store:TaxRate, which is the
         // behaviour every order had before this feature existed.

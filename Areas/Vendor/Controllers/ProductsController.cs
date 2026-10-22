@@ -18,6 +18,8 @@ public class ProductsController : Controller
     private readonly IShopService _shops;
     private readonly IImageStore _images;
     private readonly ImageStorageOptions _imageOptions;
+    private readonly IListingModerationService _moderation;
+    private readonly IAuditTrail _audit;
     private readonly ILogger<ProductsController> _logger;
     protected StoreSettings Settings { get; }
 
@@ -28,6 +30,8 @@ public class ProductsController : Controller
         IShopService shops,
         IImageStore images,
         IOptions<ImageStorageOptions> imageOptions,
+        IListingModerationService moderation,
+        IAuditTrail audit,
         ILogger<ProductsController> logger)
     {
         _db = db;
@@ -36,6 +40,8 @@ public class ProductsController : Controller
         _shops = shops;
         _images = images;
         _imageOptions = imageOptions.Value;
+        _moderation = moderation;
+        _audit = audit;
         _logger = logger;
     }
 
@@ -76,6 +82,8 @@ public class ProductsController : Controller
         query = state switch
         {
             "draft" => query.Where(p => !p.IsPublished && !p.IsDeleted),
+            "pending" => query.Where(p => p.ModerationStatus == ListingStatus.PendingReview && !p.IsDeleted),
+            "rejected" => query.Where(p => p.ModerationStatus == ListingStatus.Rejected && !p.IsDeleted),
             "deleted" => query.Where(p => p.IsDeleted),
             "outofstock" => query.Where(p => !p.IsDeleted && p.Variants.All(v => !v.IsActive || v.StockQuantity <= 0)),
             _ => query.Where(p => !p.IsDeleted)
@@ -97,6 +105,8 @@ public class ProductsController : Controller
                 MinPrice = p.Variants.Any() ? (decimal)p.Variants.Min(v => (double)v.Price) : 0m,
                 MaxPrice = p.Variants.Any() ? (decimal)p.Variants.Max(v => (double)v.Price) : 0m,
                 IsPublished = p.IsPublished,
+                ModerationStatus = p.ModerationStatus,
+                ModerationReason = p.ModerationReason,
                 IsDeleted = p.IsDeleted,
                 IsFeatured = p.IsFeatured,
                 UpdatedUtc = p.UpdatedUtc
@@ -167,6 +177,8 @@ public class ProductsController : Controller
             Brand = product.Brand,
             CategoryId = product.CategoryId,
             IsPublished = product.IsPublished,
+            ModerationStatus = product.ModerationStatus,
+            ModerationReason = product.ModerationReason,
             IsFeatured = product.IsFeatured,
             ImageUrls = string.Join(Environment.NewLine, product.Images.OrderByDescending(i => i.IsPrimary).ThenBy(i => i.DisplayOrder).Select(i => i.Url)),
             Variants = product.Variants.OrderBy(v => v.Id).Select(v => new VariantInput
@@ -287,10 +299,53 @@ public class ProductsController : Controller
         product.Description = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim();
         product.Brand = string.IsNullOrWhiteSpace(model.Brand) ? null : model.Brand.Trim();
         product.CategoryId = model.CategoryId;
-        product.IsPublished = model.IsPublished;
         product.IsFeatured = model.IsFeatured;
         product.UpdatedUtc = DateTime.UtcNow;
         product.Slug = await EnsureUniqueSlugAsync(model.Slug, model.Name, product.Id, ct);
+
+        // A vendor cannot put a listing on sale by itself — the marketplace publishes it once an
+        // administrator has approved it — so the form's "published" box is ignored here and the
+        // review state is decided by these rules instead.
+        var previousStatus = product.ModerationStatus;
+
+        if (model.IsNew)
+        {
+            // A new listing starts as a draft and has to be submitted for review.
+            product.ModerationStatus = ListingStatus.Draft;
+            product.ModerationReason = null;
+            product.IsPublished = false;
+            product.ModeratedUtc = DateTime.UtcNow;
+        }
+        else
+        {
+            switch (product.ModerationStatus)
+            {
+                case ListingStatus.PendingReview:
+                    // The vendor changed a listing that was waiting for a decision, so it is no
+                    // longer the version that was submitted: it goes back to draft and has to be
+                    // submitted again.
+                    product.ModerationStatus = ListingStatus.Draft;
+                    product.ModerationReason = null;
+                    product.IsPublished = false;
+                    product.ModeratedUtc = DateTime.UtcNow;
+                    break;
+
+                case ListingStatus.Rejected:
+                    // The listing stays rejected and keeps the reason the administrator gave, so
+                    // the vendor can still read it while they fix the listing.
+                    product.IsPublished = false;
+                    break;
+
+                case ListingStatus.Draft:
+                    product.IsPublished = false;
+                    break;
+
+                case ListingStatus.Published:
+                    // A live listing stays live when it is edited; it does not go back into the queue.
+                    product.IsPublished = true;
+                    break;
+            }
+        }
 
         // ---- Variants -------------------------------------------------
         foreach (var input in model.Variants.Where(v => v.Delete && v.Id != 0))
@@ -438,28 +493,58 @@ public class ProductsController : Controller
         }
 
         _logger.LogInformation("Saved product {ProductId} ({Name})", product.Id, product.Name);
-        Flash(model.IsNew ? $"'{product.Name}' created." : $"'{product.Name}' saved.");
+
+        var message = model.IsNew
+            ? $"'{product.Name}' was created as a draft. Submit it for review when it is ready."
+            : previousStatus == ListingStatus.PendingReview
+                ? $"'{product.Name}' was saved. It is back in draft, so submit it for review again."
+                : $"'{product.Name}' was saved.";
+
+        Flash(message);
 
         return RedirectToAction(nameof(Index));
     }
 
+    /// <summary>
+    /// Puts a listing into the review queue. The marketplace publishes it once an administrator has
+    /// approved it.
+    /// </summary>
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> TogglePublished(int id, CancellationToken ct)
+    public async Task<IActionResult> Submit(int id, CancellationToken ct)
     {
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
-        var product = await Db.Products.FirstOrDefaultAsync(p => p.Id == id && p.ShopId == shop.Id, ct);
-        if (product is null)
+
+        var result = await _moderation.SubmitAsync(id, shop.Id, ct);
+        Flash(result.Message, result.Success);
+
+        if (result.Success && result.Product is { } submitted)
         {
-            return NotFound();
+            await _audit.RecordAsync(User.Identity?.Name ?? "vendor", "listing.submitted", "Product", id,
+                $"Submitted the listing '{submitted.Name}' for review.");
         }
 
-        product.IsPublished = !product.IsPublished;
-        product.UpdatedUtc = DateTime.UtcNow;
-        await Db.SaveChangesAsync(ct);
+        return RedirectToAction(nameof(Index));
+    }
 
-        Flash($"'{product.Name}' is now {(product.IsPublished ? "published" : "unpublished")}.");
+    /// <summary>Takes a live listing off sale, as its owner. It stays editable as a draft.</summary>
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Unpublish(int id, CancellationToken ct)
+    {
+        var shop = await ResolveShopAsync(ct);
+        if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
+
+        var result = await _moderation.UnpublishAsync(id, shop.Id, ct);
+        Flash(result.Message, result.Success);
+
+        if (result.Success && result.Product is { } taken)
+        {
+            await _audit.RecordAsync(User.Identity?.Name ?? "vendor", "listing.unpublished", "Product", id,
+                $"Took the listing '{taken.Name}' off sale.");
+        }
+
         return RedirectToAction(nameof(Index));
     }
 
@@ -478,6 +563,7 @@ public class ProductsController : Controller
 
         product.IsDeleted = true;
         product.IsPublished = false;
+        product.ModerationStatus = ListingStatus.Draft;
         product.UpdatedUtc = DateTime.UtcNow;
         await Db.SaveChangesAsync(ct);
 
@@ -498,10 +584,12 @@ public class ProductsController : Controller
         }
 
         product.IsDeleted = false;
+        product.IsPublished = false;
+        product.ModerationStatus = ListingStatus.Draft;
         product.UpdatedUtc = DateTime.UtcNow;
         await Db.SaveChangesAsync(ct);
 
-        Flash($"'{product.Name}' restored as an unpublished draft.");
+        Flash($"'{product.Name}' restored as an unpublished draft. Submit it for review to put it on sale.");
         return RedirectToAction(nameof(Index), new { state = "draft" });
     }
 

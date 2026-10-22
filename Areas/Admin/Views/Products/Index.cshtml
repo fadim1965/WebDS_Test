@@ -51,6 +51,7 @@
             <label class="form-label" for="state">State</label>
             <select class="form-select" id="state" name="state">
                 <option value="" selected="@(state.Length == 0)">Active</option>
+                <option value="pending" selected="@(state == "pending")">Awaiting review</option>
                 <option value="draft" selected="@(state == "draft")">Draft</option>
                 <option value="outofstock" selected="@(state == "outofstock")">Out of stock</option>
                 <option value="deleted" selected="@(state == "deleted")">Deleted</option>
@@ -114,13 +115,9 @@
                             {
                                 <span class="badge text-bg-danger">Deleted</span>
                             }
-                            else if (row.IsPublished)
-                            {
-                                <span class="badge text-bg-success">Published</span>
-                            }
                             else
                             {
-                                <span class="badge text-bg-secondary">Draft</span>
+                                <span class="badge @row.ModerationStatus.ToCssClass()">@row.ModerationStatus.ToDisplay()</span>
                             }
                             @if (row.IsFeatured)
                             {
@@ -136,12 +133,21 @@
                                 <a class="btn btn-sm btn-outline-secondary"
                                    asp-area="" asp-controller="Products" asp-action="Details" asp-route-slug="@row.Slug">View in shop</a>
 
-                                <form method="post" asp-area="Admin" asp-controller="Products" asp-action="TogglePublished">
-                                    <input type="hidden" name="id" value="@row.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">
-                                        @(row.IsPublished ? "Unpublish" : "Publish")
-                                    </button>
-                                </form>
+                                @if (row.ModerationStatus == ListingStatus.PendingReview)
+                                {
+                                    <a class="btn btn-sm btn-outline-warning"
+                                       asp-area="Admin" asp-controller="Moderation" asp-action="Index"
+                                       asp-route-state="pending">Review</a>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-area="Admin" asp-controller="Products" asp-action="TogglePublished">
+                                        <input type="hidden" name="id" value="@row.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                                            @(row.IsPublished ? "Unpublish" : "Publish")
+                                        </button>
+                                    </form>
+                                }
 
                                 @if (row.IsDeleted)
                                 {

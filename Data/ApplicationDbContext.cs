@@ -123,6 +123,8 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(p => new { p.ShopId, p.Slug }).IsUnique();
             e.HasIndex(p => p.CategoryId);
             e.HasIndex(p => p.IsPublished);
+            // The moderation queue reads by state, so the review status is indexed too.
+            e.HasIndex(p => p.ModerationStatus);
             e.HasIndex(p => p.IsDeleted);
             e.HasIndex(p => p.ShopId);
             // NOTE: there is deliberately no global query filter for soft delete here. A filter on

@@ -188,6 +188,10 @@ builder.Services.AddScoped<IVendorLedgerService, VendorLedgerService>();
 builder.Services.AddScoped<IPayoutService, PayoutService>();
 builder.Services.Configure<PayoutOptions>(builder.Configuration.GetSection(PayoutOptions.SectionName));
 
+// Listing moderation: a vendor submits a listing and an administrator approves it before it goes
+// live. The service keeps the review state and the visible flag in step, so no controller has to.
+builder.Services.AddScoped<IListingModerationService, ListingModerationService>();
+
 // Store-wide settings live in the database and are cached application-wide, so the admin
 // settings screen can change them (today: the USD/LBP display rate) without a deployment.
 builder.Services.AddSingleton<ISiteSettingStore, SiteSettingStore>();

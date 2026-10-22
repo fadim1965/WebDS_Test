@@ -65,6 +65,15 @@ public interface IEmailService
     /// </summary>
     Task NotifyShopDecisionAsync(Shop shop, string ownerEmail, string change, CancellationToken ct = default);
 
+    /// <summary>
+    /// Tells a vendor how the marketplace decided on one of their listings.
+    /// <paramref name="decision"/> is one of <c>approved</c>, <c>rejected</c> or <c>withdrawn</c> — it
+    /// names the specific action, so a listing that is approved, withdrawn and approved again mails
+    /// each time.
+    /// </summary>
+    Task NotifyListingDecisionAsync(
+        Product product, string vendorEmail, string decision, CancellationToken ct = default);
+
     Task NotifyPasswordResetAsync(ApplicationUser user, string resetUrl, CancellationToken ct = default);
 
     /// <summary>Queues a fixed test message to the given address.</summary>
@@ -287,6 +296,21 @@ public sealed class EmailService : IEmailService
             EmailKind.ShopStatus,
             DedupeKey: $"shop-status:{shop.Id}:{change}:{shop.StatusReason}",
             UserId: shop.OwnerUserId), ct);
+    }
+
+    public Task NotifyListingDecisionAsync(
+        Product product, string vendorEmail, string decision, CancellationToken ct = default)
+    {
+        var rendered = EmailTemplates.ListingDecision(
+            product.Name, decision, product.ModerationReason, _store, _brand);
+
+        // Keyed per listing, decision and reason: a retried approval mails once, while an approval
+        // now and a later rejection each get their own message.
+        return EnqueueAsync(new EmailDraft(
+            vendorEmail, null, rendered.Subject, rendered.Html, rendered.Text,
+            EmailKind.ListingDecision,
+            DedupeKey: $"listing-decision:{product.Id}:{decision}:{product.ModerationReason}",
+            UserId: product.Shop?.OwnerUserId), ct);
     }
 
     public Task NotifyPasswordResetAsync(ApplicationUser user, string resetUrl, CancellationToken ct = default)

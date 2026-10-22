@@ -266,6 +266,11 @@ public sealed class ProductImportService : IProductImportService
             product.ShortDescription = row.ShortDescription;
             product.Description = row.Description;
             product.IsPublished = row.IsPublished;
+            // An imported listing is created by the marketplace itself, so it is not waiting for
+            // review: the review state follows the visible flag.
+            product.ModerationStatus = row.IsPublished ? ListingStatus.Published : ListingStatus.Draft;
+            product.ModerationReason = null;
+            product.ModeratedUtc = DateTime.UtcNow;
             product.IsFeatured = row.IsFeatured;
             product.UpdatedUtc = DateTime.UtcNow;
 

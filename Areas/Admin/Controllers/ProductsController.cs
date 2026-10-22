@@ -77,7 +77,7 @@ public class ProductsController : AdminControllerBase
                 p.TotalStock,
                 p.MinPrice,
                 p.MaxPrice,
-                p.IsPublished ? "Published" : "Draft",
+                p.ModerationStatus.ToDisplay(),
                 p.IsDeleted ? "Deleted" : "Live",
                 p.IsFeatured,
                 p.UpdatedUtc
@@ -113,6 +113,7 @@ public class ProductsController : AdminControllerBase
         return state switch
         {
             "draft" => query.Where(p => !p.IsPublished && !p.IsDeleted),
+            "pending" => query.Where(p => p.ModerationStatus == ListingStatus.PendingReview && !p.IsDeleted),
             "deleted" => query.Where(p => p.IsDeleted),
             "outofstock" => query.Where(p => !p.IsDeleted && p.Variants.All(v => !v.IsActive || v.StockQuantity <= 0)),
             _ => query.Where(p => !p.IsDeleted)
@@ -135,6 +136,8 @@ public class ProductsController : AdminControllerBase
             MinPrice = p.Variants.Any() ? (decimal)p.Variants.Min(v => (double)v.Price) : 0m,
             MaxPrice = p.Variants.Any() ? (decimal)p.Variants.Max(v => (double)v.Price) : 0m,
             IsPublished = p.IsPublished,
+            ModerationStatus = p.ModerationStatus,
+            ModerationReason = p.ModerationReason,
             IsDeleted = p.IsDeleted,
             IsFeatured = p.IsFeatured,
             UpdatedUtc = p.UpdatedUtc
@@ -184,6 +187,8 @@ public class ProductsController : AdminControllerBase
             Brand = product.Brand,
             CategoryId = product.CategoryId,
             IsPublished = product.IsPublished,
+            ModerationStatus = product.ModerationStatus,
+            ModerationReason = product.ModerationReason,
             IsFeatured = product.IsFeatured,
             ImageUrls = string.Join(Environment.NewLine, product.Images.OrderByDescending(i => i.IsPrimary).ThenBy(i => i.DisplayOrder).Select(i => i.Url)),
             Variants = product.Variants.OrderBy(v => v.Id).Select(v => new VariantInput
@@ -296,10 +301,24 @@ public class ProductsController : AdminControllerBase
         product.Description = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim();
         product.Brand = string.IsNullOrWhiteSpace(model.Brand) ? null : model.Brand.Trim();
         product.CategoryId = model.CategoryId;
-        product.IsPublished = model.IsPublished;
         product.IsFeatured = model.IsFeatured;
         product.UpdatedUtc = DateTime.UtcNow;
         product.Slug = await EnsureUniqueSlugAsync(model.Slug, model.Name, product.Id, ct);
+
+        // The marketplace decides whether a listing is live. An administrator editing the details of
+        // a listing that is waiting in the review queue does not approve it by accident: the queue
+        // is where that decision is made, so the listing keeps waiting there.
+        if (product.ModerationStatus == ListingStatus.PendingReview)
+        {
+            product.IsPublished = false;
+        }
+        else
+        {
+            product.IsPublished = model.IsPublished;
+            product.ModerationStatus = model.IsPublished ? ListingStatus.Published : ListingStatus.Draft;
+            product.ModerationReason = null;
+            product.ModeratedUtc = DateTime.UtcNow;
+        }
 
         // ---- Variants -------------------------------------------------
         foreach (var input in model.Variants.Where(v => v.Delete && v.Id != 0))
@@ -460,7 +479,12 @@ public class ProductsController : AdminControllerBase
             return NotFound();
         }
 
+        // The marketplace's authority to publish is immediate, so the review state follows the
+        // visible flag rather than the other way round.
         product.IsPublished = !product.IsPublished;
+        product.ModerationStatus = product.IsPublished ? ListingStatus.Published : ListingStatus.Draft;
+        product.ModerationReason = null;
+        product.ModeratedUtc = DateTime.UtcNow;
         product.UpdatedUtc = DateTime.UtcNow;
         await Db.SaveChangesAsync(ct);
 
@@ -481,6 +505,7 @@ public class ProductsController : AdminControllerBase
 
         product.IsDeleted = true;
         product.IsPublished = false;
+        product.ModerationStatus = ListingStatus.Draft;
         product.UpdatedUtc = DateTime.UtcNow;
         await Db.SaveChangesAsync(ct);
 
@@ -499,6 +524,8 @@ public class ProductsController : AdminControllerBase
         }
 
         product.IsDeleted = false;
+        product.IsPublished = false;
+        product.ModerationStatus = ListingStatus.Draft;
         product.UpdatedUtc = DateTime.UtcNow;
         await Db.SaveChangesAsync(ct);
 

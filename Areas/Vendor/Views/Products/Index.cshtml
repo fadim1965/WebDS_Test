@@ -39,7 +39,9 @@
             <label class="form-label" for="state">State</label>
             <select class="form-select" id="state" name="state">
                 <option value="" selected="@(state.Length == 0)">Active</option>
+                <option value="pending" selected="@(state == "pending")">Awaiting review</option>
                 <option value="draft" selected="@(state == "draft")">Draft</option>
+                <option value="rejected" selected="@(state == "rejected")">Rejected</option>
                 <option value="outofstock" selected="@(state == "outofstock")">Out of stock</option>
                 <option value="deleted" selected="@(state == "deleted")">Deleted</option>
             </select>
@@ -102,13 +104,13 @@
                             {
                                 <span class="badge text-bg-danger">Deleted</span>
                             }
-                            else if (row.IsPublished)
-                            {
-                                <span class="badge text-bg-success">Published</span>
-                            }
                             else
                             {
-                                <span class="badge text-bg-secondary">Draft</span>
+                                <span class="badge @row.ModerationStatus.ToCssClass()">@row.ModerationStatus.ToDisplay()</span>
+                                @if (!string.IsNullOrWhiteSpace(row.ModerationReason))
+                                {
+                                    <div class="small text-muted">@row.ModerationReason</div>
+                                }
                             }
                             @if (row.IsFeatured)
                             {
@@ -124,13 +126,6 @@
                                 <a class="btn btn-sm btn-outline-secondary"
                                    asp-area="" asp-controller="Products" asp-action="Details" asp-route-slug="@row.Slug">View in shop</a>
 
-                                <form method="post" asp-area="Vendor" asp-controller="Products" asp-action="TogglePublished">
-                                    <input type="hidden" name="id" value="@row.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-primary">
-                                        @(row.IsPublished ? "Unpublish" : "Publish")
-                                    </button>
-                                </form>
-
                                 @if (row.IsDeleted)
                                 {
                                     <form method="post" asp-area="Vendor" asp-controller="Products" asp-action="Restore">
@@ -140,6 +135,25 @@
                                 }
                                 else
                                 {
+                                    if (row.ModerationStatus == ListingStatus.Published)
+                                    {
+                                        <form method="post" asp-area="Vendor" asp-controller="Products" asp-action="Unpublish">
+                                            <input type="hidden" name="id" value="@row.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Take off sale</button>
+                                        </form>
+                                    }
+                                    else if (row.ModerationStatus == ListingStatus.PendingReview)
+                                    {
+                                        <span class="text-muted small">Waiting for review</span>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" asp-area="Vendor" asp-controller="Products" asp-action="Submit">
+                                            <input type="hidden" name="id" value="@row.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Submit for review</button>
+                                        </form>
+                                    }
+
                                     <form method="post" asp-area="Vendor" asp-controller="Products" asp-action="Delete"
                                           onsubmit="return confirm('Delete this product? It will be hidden from the shop and can be restored from the Deleted filter.');">
                                         <input type="hidden" name="id" value="@row.Id" />

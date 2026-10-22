@@ -1,0 +1,147 @@
+@using Microsoft.Extensions.Options
+@model IReadOnlyList<ListingQueueRow>
+@inject IOptions<StoreSettings> StoreOptions
+@{
+    var currency = StoreOptions.Value.CurrencySymbol;
+    var state = ViewData["State"] as string ?? string.Empty;
+    var search = ViewData["Search"] as string ?? string.Empty;
+    var pending = ViewData["Pending"] is int count ? count : 0;
+
+    string Money(decimal value) => currency + value.ToString("N2");
+    string Plural(int n, string singular) => n == 1 ? $"{n} {singular}" : $"{n} {singular}s";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h2 class="h4 mb-1">Listing moderation</h2>
+        <p class="text-muted small mb-0">
+            @if (pending > 0)
+            {
+                <span class="badge text-bg-warning">@Plural(pending, "listing") waiting for a decision.</span>
+            }
+            else
+            {
+                <span class="badge text-bg-success">Nothing waiting for a decision.</span>
+            }
+        </p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Products" asp-action="Index">All products</a>
+</div>
+
+<p class="text-muted small">
+    A vendor submits a listing and it stays out of the catalogue until you approve it. Approving puts
+    it live; rejecting sends the vendor the reason so they can fix it and submit again.
+</p>
+
+@* ---- Filters. A GET form so the page can be bookmarked and shared. ---- *@
+<form method="get" asp-area="Admin" asp-controller="Moderation" asp-action="Index" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4">
+            <label class="form-label" for="q">Search</label>
+            <input class="form-control" type="search" id="q" name="q" value="@search" placeholder="Listing name" />
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label" for="state">State</label>
+            <select class="form-select" id="state" name="state">
+                <option value="" selected="@(state.Length == 0)">All states</option>
+                <option value="pending" selected="@(state == "pending")">Awaiting review</option>
+                <option value="published" selected="@(state == "published")">Published</option>
+                <option value="draft" selected="@(state == "draft")">Draft</option>
+                <option value="rejected" selected="@(state == "rejected")">Rejected</option>
+            </select>
+        </div>
+        <div class="col-12 col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-grow-1">Filter</button>
+            <a class="btn btn-outline-secondary" asp-area="Admin" asp-controller="Moderation" asp-action="Index">Reset</a>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle table-sticky-head mb-0">
+            <thead>
+                <tr>
+                    <th scope="col">Listing</th>
+                    <th scope="col">Shop</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-end">Price</th>
+                    <th scope="col" class="text-end">Stock</th>
+                    <th scope="col">Updated</th>
+                    <th scope="col" class="text-end">Decision</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">No listings match this filter.</td>
+                    </tr>
+                }
+                @foreach (var row in Model)
+                {
+                    <tr>
+                        <td>
+                            <a class="fw-semibold text-decoration-none"
+                               asp-area="Admin" asp-controller="Products" asp-action="Edit" asp-route-id="@row.Id">@row.Name</a>
+                            <div class="small text-muted"><code>@row.Slug</code></div>
+                        </td>
+                        <td>@row.ShopName</td>
+                        <td>
+                            <span class="badge @row.Status.ToCssClass()">@row.Status.ToDisplay()</span>
+                            @if (!string.IsNullOrWhiteSpace(row.Reason))
+                            {
+                                <div class="small text-muted">@row.Reason</div>
+                            }
+                        </td>
+                        <td class="text-end text-nowrap">
+                            @if (row.VariantCount == 0)
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                            else
+                            {
+                                @Money(row.Price)
+                            }
+                        </td>
+                        <td class="text-end">@row.Stock</td>
+                        <td class="small text-muted text-nowrap">@row.UpdatedUtc.ToString("d MMM yyyy")</td>
+                        <td>
+                            <div class="d-flex flex-wrap justify-content-end gap-1">
+                                @if (row.Status == ListingStatus.PendingReview)
+                                {
+                                    <form method="post" asp-area="Admin" asp-controller="Moderation" asp-action="Approve">
+                                        <input type="hidden" name="id" value="@row.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-success">Approve</button>
+                                    </form>
+
+                                    <form method="post" asp-area="Admin" asp-controller="Moderation" asp-action="Reject"
+                                          class="d-flex gap-1">
+                                        <input type="hidden" name="id" value="@row.Id" />
+                                        <input type="text" name="reason" class="form-control form-control-sm" style="max-width:14rem;"
+                                               placeholder="Why is it rejected?" maxlength="500" required />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
+                                    </form>
+                                }
+                                else if (row.Status == ListingStatus.Published)
+                                {
+                                    <form method="post" asp-area="Admin" asp-controller="Moderation" asp-action="Withdraw"
+                                          class="d-flex gap-1">
+                                        <input type="hidden" name="id" value="@row.Id" />
+                                        <input type="text" name="reason" class="form-control form-control-sm" style="max-width:14rem;"
+                                               placeholder="Why is it withdrawn?" maxlength="500" />
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">Withdraw</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">No decision needed</span>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

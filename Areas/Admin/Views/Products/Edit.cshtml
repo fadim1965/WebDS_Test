@@ -159,10 +159,29 @@
                         <span asp-validation-for="CategoryId" class="text-danger small"></span>
                     </div>
 
-                    <div class="form-check mb-2">
-                        <input asp-for="IsPublished" class="form-check-input" />
-                        <label class="form-check-label" asp-for="IsPublished">Published</label>
-                    </div>
+                    @if (Model.ModerationStatus == ListingStatus.PendingReview)
+                    {
+                        @* A listing in the review queue is decided in the queue, so editing its
+                           details here does not approve it. *@
+                        <div class="mb-2">
+                            <span class="form-label d-block mb-1">Review status</span>
+                            <span class="badge @Model.ModerationStatus.ToCssClass()">@Model.ModerationStatus.ToDisplay()</span>
+                            <a class="btn btn-sm btn-outline-warning ms-2"
+                               asp-area="Admin" asp-controller="Moderation" asp-action="Index"
+                               asp-route-state="pending">Open the review queue</a>
+                            <div class="form-text mt-1">
+                                This listing is waiting for a decision. Editing it here does not approve it —
+                                approve or reject it in the review queue.
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="form-check mb-2">
+                            <input asp-for="IsPublished" class="form-check-input" />
+                            <label class="form-check-label" asp-for="IsPublished">Published</label>
+                        </div>
+                    }
                     <div class="form-check mb-2">
                         <input asp-for="IsFeatured" class="form-check-input" />
                         <label class="form-check-label" asp-for="IsFeatured">Featured</label>

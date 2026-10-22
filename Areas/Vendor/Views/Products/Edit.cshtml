@@ -160,14 +160,27 @@
                     </div>
 
                     <div class="form-check mb-2">
-                        <input asp-for="IsPublished" class="form-check-input" />
-                        <label class="form-check-label" asp-for="IsPublished">Published</label>
-                    </div>
-                    <div class="form-check mb-2">
                         <input asp-for="IsFeatured" class="form-check-input" />
                         <label class="form-check-label" asp-for="IsFeatured">Featured</label>
                     </div>
-                    <div class="form-text">Unpublished products are hidden from the storefront and cannot be bought.</div>
+
+                    @* The vendor cannot publish a listing by themselves — the marketplace publishes it
+                       once an administrator has approved it — so the state is shown, not set. *@
+                    @if (!Model.IsNew)
+                    {
+                        <div class="mb-2">
+                            <span class="form-label d-block mb-1">Review status</span>
+                            <span class="badge @Model.ModerationStatus.ToCssClass()">@Model.ModerationStatus.ToDisplay()</span>
+                            @if (!string.IsNullOrWhiteSpace(Model.ModerationReason))
+                            {
+                                <div class="small text-danger mt-1">@Model.ModerationReason</div>
+                            }
+                        </div>
+                    }
+                    <div class="form-text">
+                        A listing goes live after the marketplace approves it. Save your changes, then
+                        use "Submit for review" on the products list.
+                    </div>
                 </div>
             </div>
 

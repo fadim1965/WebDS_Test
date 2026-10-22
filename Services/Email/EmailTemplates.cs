@@ -380,6 +380,58 @@ public static class EmailTemplates
         return new RenderedEmail(heading, html, text);
     }
 
+    public static RenderedEmail ListingDecision(
+        string productName, string decision, string? reason, StoreSettings store, BrandingOptions brand)
+    {
+        var heading = decision switch
+        {
+            "approved" => $"{productName} is approved",
+            "rejected" => $"{productName} was not approved",
+            "withdrawn" => $"{productName} was withdrawn",
+            _ => $"{productName}: listing update"
+        };
+
+        var sentenceHtml = decision switch
+        {
+            "approved" => $"Your listing <strong>{Escape(productName)}</strong> has been approved and is now live in the catalogue.",
+            "rejected" => $"Your listing <strong>{Escape(productName)}</strong> was not approved, so it is not live.",
+            "withdrawn" => $"Your listing <strong>{Escape(productName)}</strong> has been withdrawn from the catalogue and is no longer live.",
+            _ => $"Your listing <strong>{Escape(productName)}</strong> was updated ({Escape(decision)})."
+        };
+
+        var sentenceText = decision switch
+        {
+            "approved" => $"Your listing {productName} has been approved and is now live in the catalogue.",
+            "rejected" => $"Your listing {productName} was not approved, so it is not live.",
+            "withdrawn" => $"Your listing {productName} has been withdrawn from the catalogue and is no longer live.",
+            _ => $"Your listing {productName} was updated ({decision})."
+        };
+
+        var reasonHtml = string.IsNullOrWhiteSpace(reason)
+            ? string.Empty
+            : $"""
+              <p style="margin:0 0 12px">Reason: {Escape(reason)}</p>
+              """;
+
+        var body = $"""
+            <p style="margin:0 0 12px">Hi there,</p>
+            <p style="margin:0 0 12px">{sentenceHtml}</p>
+            {reasonHtml}
+            """;
+
+        var html = Layout(store, brand, heading, body);
+        var text = $"""
+            Hi there,
+
+            {sentenceText}
+            {(string.IsNullOrWhiteSpace(reason) ? string.Empty : $"Reason: {reason}")}
+
+            {store.Name}
+            """;
+
+        return new RenderedEmail(heading, html, text);
+    }
+
     public static RenderedEmail PasswordReset(
         string displayName, string resetUrl, int validMinutes, StoreSettings store, BrandingOptions brand)
     {

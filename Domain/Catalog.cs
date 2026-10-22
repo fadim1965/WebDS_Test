@@ -84,6 +84,27 @@ public class Product
     /// <summary>Unpublished products are invisible to shoppers and cannot be added to a cart.</summary>
     public bool IsPublished { get; set; } = true;
 
+    /// <summary>
+    /// Where this listing sits in the marketplace's review process. A vendor submits a listing and
+    /// an administrator approves it; only an approved listing is published.
+    /// </summary>
+    /// <remarks>
+    /// The zero value is <see cref="ListingStatus.Published"/>, so a product that predates
+    /// moderation keeps its place in the catalogue without an administrator having to re-approve it.
+    /// <c>ListingModerationService</c> keeps this and <see cref="IsPublished"/> in step: a listing is
+    /// live exactly when it is published.
+    /// </remarks>
+    public ListingStatus ModerationStatus { get; set; } = ListingStatus.Published;
+
+    /// <summary>
+    /// Why an administrator turned the listing down. Shown to the vendor so they can fix it.
+    /// </summary>
+    [StringLength(500)]
+    public string? ModerationReason { get; set; }
+
+    /// <summary>When the listing last changed state.</summary>
+    public DateTime? ModeratedUtc { get; set; }
+
     /// <summary>Soft delete. Products referenced by an order are never physically removed.</summary>
     public bool IsDeleted { get; set; }
 

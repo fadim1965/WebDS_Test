@@ -166,6 +166,12 @@ public sealed class AdminProductRow
     public decimal MinPrice { get; init; }
     public decimal MaxPrice { get; init; }
     public bool IsPublished { get; init; }
+
+    /// <summary>Where the listing sits in the marketplace's review process.</summary>
+    public ListingStatus ModerationStatus { get; init; } = ListingStatus.Published;
+
+    /// <summary>Why an administrator turned the listing down, when they did.</summary>
+    public string? ModerationReason { get; init; }
     public bool IsDeleted { get; init; }
     public bool IsFeatured { get; init; }
     public DateTime UpdatedUtc { get; init; }
