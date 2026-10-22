@@ -83,6 +83,10 @@ public static class DbSeeder
         // which already exists, so it is added on demand before anything reads it.
         await CategoryCommissionSchema.EnsureAsync(db, ct);
 
+        // Two-factor authentication postdates the store: the 2FA columns sit on Users,
+        // which already exists, so they are added on demand before anything reads them.
+        await TwoFactorSchema.EnsureAsync(db, ct);
+
         // One standard-rate class so the feature is usable and visible on a fresh store. Products are
         // left unassigned on purpose: an unassigned product falls back to Store:TaxRate, which is the
         // behaviour every order had before this feature existed.

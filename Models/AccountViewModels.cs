@@ -157,3 +157,46 @@ public sealed class AddressFormModel
     [System.ComponentModel.DataAnnotations.Display(Name = "Use as my default address")]
     public bool IsDefault { get; set; }
 }
+
+/// <summary>Backing model for the two-factor authentication challenge page.</summary>
+public sealed class TwoFactorChallengeViewModel
+{
+    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Enter the 6-digit code from your authenticator app, or a backup code.")]
+    [System.ComponentModel.DataAnnotations.StringLength(8, MinimumLength = 6, ErrorMessage = "Enter a 6-digit code or an 8-character backup code.")]
+    [System.ComponentModel.DataAnnotations.Display(Name = "Code")]
+    public string Code { get; set; } = string.Empty;
+
+    public string? ReturnUrl { get; set; }
+}
+
+/// <summary>Backing model for the two-factor authentication settings page.</summary>
+public sealed class TwoFactorViewModel
+{
+    public bool IsEnabled { get; set; }
+    public int BackupCodesCount { get; set; }
+
+    /// <summary>Pre-formatted backup codes status text.</summary>
+    public string BackupCodesStatus => BackupCodesCount > 0
+        ? $"{BackupCodesCount} backup code{(BackupCodesCount == 1 ? "" : "s")} remaining"
+        : string.Empty;
+
+    /// <summary>CSS class for the enabled state container.</summary>
+    public string EnabledContainerClass => IsEnabled ? "" : "d-none";
+
+    /// <summary>CSS class for the disabled state container.</summary>
+    public string DisabledContainerClass => IsEnabled ? "d-none" : "";
+}
+
+/// <summary>Backing model for the 2FA confirmation screen showing the secret and backup codes.</summary>
+public sealed class TwoFactorConfirmedViewModel
+{
+    public string Secret { get; set; } = string.Empty;
+    public string QrCodeUri { get; set; } = string.Empty;
+    public string[] BackupCodes { get; set; } = Array.Empty<string>();
+}
+
+/// <summary>Backing model for the backup codes confirmation screen.</summary>
+public sealed class BackupCodesConfirmedViewModel
+{
+    public string[] BackupCodes { get; set; } = Array.Empty<string>();
+}

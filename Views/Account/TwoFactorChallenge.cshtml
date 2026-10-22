@@ -1,0 +1,44 @@
+@model TwoFactorChallengeViewModel
+@{
+    ViewData["Title"] = "Two-factor authentication";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h2 class="h4 mb-0">Two-factor authentication</h2>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">
+                        Enter the 6-digit code from your authenticator app, or use one of your backup codes.
+                    </p>
+
+                    <form method="post" asp-action="TwoFactorChallenge" asp-route-returnUrl="@Model.ReturnUrl">
+                        <input type="hidden" asp-for="ReturnUrl" />
+
+                        <div class="mb-3">
+                            <label class="form-label required-label" asp-for="Code">Code</label>
+                            <input asp-for="Code" class="form-control" placeholder="123456" autocomplete="one-time-code" />
+                            <span asp-validation-for="Code" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Sign in</button>
+                            <a class="btn btn-outline-secondary" asp-action="Login">Use password instead</a>
+                        </div>
+                    </form>
+
+                    <hr class="my-3" />
+
+                    <p class="text-muted small">
+                        Don't have your authenticator app?
+                        <a asp-action="Login">Sign in with password only</a>
+                        (you'll need to complete 2FA on the next step).
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

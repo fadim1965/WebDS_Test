@@ -196,6 +196,11 @@ builder.Services.AddScoped<IListingModerationService, ListingModerationService>(
 // The ledger calculates commission per order line using the product's category rate.
 builder.Services.AddScoped<IVendorLedgerService, VendorLedgerService>();
 
+// Two-factor authentication: users can secure their accounts with TOTP-based 2FA (Google Authenticator,
+// Authy, etc.) and single-use backup codes. The service handles secret generation, QR code URIs,
+// code validation with clock skew tolerance, and backup code management.
+builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
+
 // Store-wide settings live in the database and are cached application-wide, so the admin
 // settings screen can change them (today: the USD/LBP display rate) without a deployment.
 builder.Services.AddSingleton<ISiteSettingStore, SiteSettingStore>();

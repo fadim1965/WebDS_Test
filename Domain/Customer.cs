@@ -45,6 +45,16 @@ public class ApplicationUser
 
     public DateTime? LastLoginUtc { get; set; }
 
+    /// <summary>Whether two-factor authentication is enabled for this account.</summary>
+    public bool TwoFactorEnabled { get; set; }
+
+    /// <summary>Base32-encoded TOTP secret. Null when 2FA is not configured.</summary>
+    [StringLength(64)]
+    public string? TwoFactorSecret { get; set; }
+
+    /// <summary>JSON array of backup codes. Each code is single-use.</summary>
+    public string? TwoFactorRecoveryCodes { get; set; }
+
     public ICollection<Address> Addresses { get; set; } = new List<Address>();
     public ICollection<Order> Orders { get; set; } = new List<Order>();
     public ICollection<WishlistItem> Wishlist { get; set; } = new List<WishlistItem>();

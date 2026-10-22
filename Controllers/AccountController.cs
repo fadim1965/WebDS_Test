@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 using WebDS_Test.Data;
 using WebDS_Test.Domain;
 using WebDS_Test.Models;
@@ -85,6 +86,17 @@ public class AccountController : StoreControllerBase
             return View(model);
         }
 
+        // If 2FA is enabled, redirect to the challenge page instead of signing in directly.
+        if (user.TwoFactorEnabled)
+        {
+            // Store the user ID and rememberMe in temp data for the 2FA challenge step.
+            TempData["TwoFactorUserId"] = user.Id;
+            TempData["TwoFactorRememberMe"] = model.RememberMe;
+            TempData["TwoFactorReturnUrl"] = model.ReturnUrl;
+
+            return RedirectToAction(nameof(TwoFactorChallenge), new { returnUrl = model.ReturnUrl });
+        }
+
         await SignInAsync(user, model.RememberMe, ct);
         await _accounts.RecordLoginAsync(user.Id, ct);
 
@@ -102,6 +114,235 @@ public class AccountController : StoreControllerBase
         return roles.Contains(AccountService.AdminRole)
             ? RedirectToAction("Index", "Dashboard", new { area = "Admin" })
             : RedirectToAction(nameof(Profile));
+    }
+
+    // ------------------------------------------------------------------
+    // Two-factor authentication challenge
+    // ------------------------------------------------------------------
+
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult TwoFactorChallenge(string? returnUrl = null)
+    {
+        var userId = TempData.Peek("TwoFactorUserId") as string;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return RedirectToAction(nameof(Login));
+        }
+
+        TempData.Keep("TwoFactorUserId");
+        TempData.Keep("TwoFactorRememberMe");
+        TempData.Keep("TwoFactorReturnUrl");
+
+        ViewData["Title"] = "Two-factor authentication";
+        return View(new TwoFactorChallengeViewModel { ReturnUrl = returnUrl });
+    }
+
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    public async Task<IActionResult> TwoFactorChallenge(TwoFactorChallengeViewModel model, CancellationToken ct)
+    {
+        var userId = TempData["TwoFactorUserId"] as string;
+        var rememberMe = TempData["TwoFactorRememberMe"] as bool? ?? false;
+        var returnUrl = TempData["TwoFactorReturnUrl"] as string ?? model.ReturnUrl;
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            return RedirectToAction(nameof(Login));
+        }
+
+        if (!ModelState.IsValid)
+        {
+            ViewData["Title"] = "Two-factor authentication";
+            return View(model);
+        }
+
+        var user = await _accounts.GetByIdAsync(userId, ct);
+        if (user is null || !user.TwoFactorEnabled)
+        {
+            TempData.Clear();
+            return RedirectToAction(nameof(Login));
+        }
+
+        var twoFactor = new TwoFactorService();
+        var code = model.Code?.Trim() ?? string.Empty;
+
+        // Try TOTP code first
+        var valid = twoFactor.ValidateCode(user.TwoFactorSecret!, code);
+
+        // If not valid, try backup code
+        var backupUsed = false;
+        if (!valid && !string.IsNullOrWhiteSpace(user.TwoFactorRecoveryCodes))
+        {
+            var codesJson = user.TwoFactorRecoveryCodes;
+            backupUsed = twoFactor.ConsumeBackupCode(ref codesJson, code);
+            if (backupUsed)
+            {
+                user.TwoFactorRecoveryCodes = codesJson;
+                await _db.SaveChangesAsync(ct);
+            }
+        }
+
+        if (!valid && !backupUsed)
+        {
+            ModelState.AddModelError(string.Empty, "The code is invalid or has already been used.");
+            ViewData["Title"] = "Two-factor authentication";
+            return View(model);
+        }
+
+        TempData.Clear();
+
+        await SignInAsync(user, rememberMe, ct);
+        await _accounts.RecordLoginAsync(user.Id, ct);
+
+        // Anything the shopper collected while anonymous becomes theirs.
+        await CartService.MergeAnonymousCartAsync(user.Id, ct);
+
+        Flash($"Welcome back, {user.DisplayName}.");
+
+        var roles = await _accounts.GetRolesAsync(user.Id, ct);
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            return Redirect(returnUrl);
+        }
+
+        var rolesList = await _accounts.GetRolesAsync(user.Id, ct);
+        return rolesList.Contains(AccountService.AdminRole)
+            ? RedirectToAction("Index", "Dashboard", new { area = "Admin" })
+            : RedirectToAction(nameof(Profile));
+    }
+
+    // ------------------------------------------------------------------
+    // Two-factor authentication setup (authenticated users only)
+    // ------------------------------------------------------------------
+
+    [HttpGet]
+    public async Task<IActionResult> TwoFactor(CancellationToken ct)
+    {
+        var userId = CurrentUserId;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Challenge();
+        }
+
+        var user = await _accounts.GetByIdAsync(userId, ct);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        ViewData["Title"] = "Two-factor authentication";
+        return View(new TwoFactorViewModel
+        {
+            IsEnabled = user.TwoFactorEnabled,
+            BackupCodesCount = user.TwoFactorRecoveryCodes != null
+                ? JsonSerializer.Deserialize<string[]>(user.TwoFactorRecoveryCodes)?.Length ?? 0
+                : 0
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EnableTwoFactor(string password, CancellationToken ct)
+    {
+        var userId = CurrentUserId;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Challenge();
+        }
+
+        var result = await _accounts.EnableTwoFactorAsync(userId, password, ct);
+
+        if (!result.Success)
+        {
+            Flash(result.Message, false);
+            return RedirectToAction(nameof(TwoFactor));
+        }
+
+        // The first time 2FA is enabled, we show the secret and backup codes.
+        // We pass them via TempData so they appear on the confirmation screen.
+        TempData["TwoFactorSecret"] = result.Secret;
+        TempData["TwoFactorQrUri"] = result.QrCodeUri;
+        TempData["TwoFactorBackupCodes"] = result.BackupCodes;
+
+        Flash("Two-factor authentication enabled. Scan the QR code with your authenticator app and save the backup codes.");
+        return RedirectToAction(nameof(TwoFactorConfirmed));
+    }
+
+    [HttpGet]
+    public IActionResult TwoFactorConfirmed()
+    {
+        var secret = TempData["TwoFactorSecret"] as string;
+        var qrUri = TempData["TwoFactorQrUri"] as string;
+        var backupCodes = TempData["TwoFactorBackupCodes"] as string[];
+
+        if (string.IsNullOrEmpty(secret))
+        {
+            return RedirectToAction(nameof(TwoFactor));
+        }
+
+        ViewData["Title"] = "Two-factor authentication enabled";
+        return View(new TwoFactorConfirmedViewModel
+        {
+            Secret = secret,
+            QrCodeUri = qrUri,
+            BackupCodes = backupCodes ?? Array.Empty<string>()
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DisableTwoFactor(string password, CancellationToken ct)
+    {
+        var userId = CurrentUserId;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Challenge();
+        }
+
+        var result = await _accounts.DisableTwoFactorAsync(userId, password, ct);
+        Flash(result.Message, result.Success);
+
+        return RedirectToAction(nameof(TwoFactor));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RegenerateBackupCodes(string password, CancellationToken ct)
+    {
+        var userId = CurrentUserId;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Challenge();
+        }
+
+        var result = await _accounts.RegenerateBackupCodesAsync(userId, password, ct);
+
+        if (!result.Success)
+        {
+            Flash(result.Message, false);
+            return RedirectToAction(nameof(TwoFactor));
+        }
+
+        TempData["TwoFactorBackupCodes"] = result.BackupCodes;
+        Flash("New backup codes generated. Save them in a safe place.");
+        return RedirectToAction(nameof(BackupCodesConfirmed));
+    }
+
+    [HttpGet]
+    public IActionResult BackupCodesConfirmed()
+    {
+        var backupCodes = TempData["TwoFactorBackupCodes"] as string[];
+
+        if (backupCodes is null || backupCodes.Length == 0)
+        {
+            return RedirectToAction(nameof(TwoFactor));
+        }
+
+        ViewData["Title"] = "New backup codes";
+        return View(new BackupCodesConfirmedViewModel { BackupCodes = backupCodes });
     }
 
     [HttpGet]

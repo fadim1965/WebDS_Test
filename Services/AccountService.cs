@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace WebDS_Test.Services;
 
@@ -26,6 +27,17 @@ public interface IAccountService
     Task<AccountResult> UpdateProfileAsync(string userId, string displayName, string? phone, CancellationToken ct = default);
 
     Task<AccountResult> ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken ct = default);
+
+    /// <summary>Enables 2FA for the user. Returns the secret and QR code URI for setup.</summary>
+    Task<(bool Success, string Message, string? Secret, string? QrCodeUri, string[]? BackupCodes)> EnableTwoFactorAsync(
+        string userId, string password, CancellationToken ct = default);
+
+    /// <summary>Disables 2FA for the user.</summary>
+    Task<AccountResult> DisableTwoFactorAsync(string userId, string password, CancellationToken ct = default);
+
+    /// <summary>Regenerates backup codes for a user with 2FA enabled.</summary>
+    Task<(bool Success, string Message, string[]? BackupCodes)> RegenerateBackupCodesAsync(
+        string userId, string password, CancellationToken ct = default);
 
     Task RecordLoginAsync(string userId, CancellationToken ct = default);
 
@@ -257,4 +269,94 @@ public sealed class AccountService : IAccountService
             .Where(r => r.UserId == userId)
             .Select(r => r.RoleName)
             .ToListAsync(ct);
+
+    public async Task<(bool Success, string Message, string? Secret, string? QrCodeUri, string[]? BackupCodes)> EnableTwoFactorAsync(
+        string userId, string password, CancellationToken ct = default)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+        if (user is null)
+        {
+            return (false, "Account not found.", null, null, null);
+        }
+
+        if (!_hasher.Verify(password, user.PasswordHash))
+        {
+            return (false, "Your current password is incorrect.", null, null, null);
+        }
+
+        if (user.TwoFactorEnabled)
+        {
+            return (false, "Two-factor authentication is already enabled.", null, null, null);
+        }
+
+        var twoFactor = new TwoFactorService();
+        var (secret, qrUri) = twoFactor.GenerateSecret(user.Email);
+        var backupCodes = twoFactor.GenerateBackupCodes();
+
+        user.TwoFactorEnabled = true;
+        user.TwoFactorSecret = secret;
+        user.TwoFactorRecoveryCodes = JsonSerializer.Serialize(backupCodes);
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("User {UserId} enabled two-factor authentication", userId);
+        return (true, "Two-factor authentication enabled. Save your backup codes in a safe place.", secret, null, backupCodes);
+    }
+
+    public async Task<AccountResult> DisableTwoFactorAsync(string userId, string password, CancellationToken ct = default)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+        if (user is null)
+        {
+            return AccountResult.Fail("Account not found.");
+        }
+
+        if (!_hasher.Verify(password, user.PasswordHash))
+        {
+            return AccountResult.Fail("Your current password is incorrect.");
+        }
+
+        if (!user.TwoFactorEnabled)
+        {
+            return AccountResult.Fail("Two-factor authentication is not enabled.");
+        }
+
+        user.TwoFactorEnabled = false;
+        user.TwoFactorSecret = null;
+        user.TwoFactorRecoveryCodes = null;
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("User {UserId} disabled two-factor authentication", userId);
+        return AccountResult.Ok(user, "Two-factor authentication disabled.");
+    }
+
+    public async Task<(bool Success, string Message, string[]? BackupCodes)> RegenerateBackupCodesAsync(
+        string userId, string password, CancellationToken ct = default)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+        if (user is null)
+        {
+            return (false, "Account not found.", null);
+        }
+
+        if (!_hasher.Verify(password, user.PasswordHash))
+        {
+            return (false, "Your current password is incorrect.", null);
+        }
+
+        if (!user.TwoFactorEnabled)
+        {
+            return (false, "Two-factor authentication is not enabled.", null);
+        }
+
+        var twoFactor = new TwoFactorService();
+        var backupCodes = twoFactor.GenerateBackupCodes();
+
+        user.TwoFactorRecoveryCodes = JsonSerializer.Serialize(backupCodes);
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("User {UserId} regenerated backup codes", userId);
+        return (true, "New backup codes generated. Save them in a safe place.", backupCodes);
+    }
 }

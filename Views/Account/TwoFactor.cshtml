@@ -1,0 +1,75 @@
+@model TwoFactorViewModel
+@{
+    ViewData["Title"] = "Two-factor authentication";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Two-factor authentication</h1>
+                <a class="btn btn-outline-secondary" asp-action="Profile">Back to profile</a>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Authenticator app</h2>
+                    <form method="post" asp-action="DisableTwoFactor" onsubmit="return confirm('Disable two-factor authentication? Your account will only be protected by your password.');" class="@Model.DisabledContainerClass">
+                        <input type="password" name="password" class="form-control form-control-sm me-2" placeholder="Current password" required style="max-width: 14rem;" />
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Disable</button>
+                    </form>
+                    <form method="post" asp-action="EnableTwoFactor" class="@Model.EnabledContainerClass">
+                        <input type="password" name="password" class="form-control form-control-sm me-2" placeholder="Current password" required style="max-width: 14rem;" />
+                        <button type="submit" class="btn btn-primary btn-sm">Enable</button>
+                    </form>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success d-flex align-items-center @Model.EnabledContainerClass">
+                        <svg class="bi me-2" width="24" height="24" role="img" aria-label="Enabled"><use xlink:href="#check-circle-fill"/></svg>
+                        <div>
+                            <strong>Two-factor authentication is enabled.</strong>
+                            <div class="small text-muted">Your account is protected by an authenticator app.</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2 mt-3 @Model.EnabledContainerClass">
+                        <form method="post" asp-action="RegenerateBackupCodes">
+                            <input type="password" name="password" class="form-control form-control-sm me-2" placeholder="Current password" required style="max-width: 14rem;" />
+                            <button type="submit" class="btn btn-outline-primary btn-sm">Regenerate backup codes</button>
+                        </form>
+
+                        <div class="align-self-center text-muted small d-flex align-items-center gap-2" id="backupCodesStatus" style="display: none;">
+                            <svg class="bi me-1" width="16" height="16" role="img" aria-label="Backup codes"><use xlink:href="#shield-lock-fill"/></use>
+                            <span id="backupCodesCount"></span>
+                        </div>
+                    </div>
+
+                    <div class="@Model.DisabledContainerClass">
+                        <p class="text-muted mb-3">
+                            Add an extra layer of security to your account. After you enter your password,
+                            you'll also need a code from an authenticator app (Google Authenticator, Authy,
+                            Microsoft Authenticator, etc.).
+                        </p>
+
+                        <p class="text-muted small mb-3">
+                            You'll also receive 10 single-use backup codes. Save them in a safe place —
+                            they're the only way to sign in if you lose access to your authenticator app.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var count = @Model.BackupCodesCount;
+        if (count > 0) {
+            var el = document.getElementById('backupCodesStatus');
+            el.style.display = 'flex';
+            var plural = count === 1 ? '' : 's';
+            document.getElementById('backupCodesCount').textContent = count + ' backup code' + plural + ' remaining';
+        }
+    </script>
+}
