@@ -151,15 +151,40 @@ public class PostSaleController : AdminControllerBase
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Rts(
-        int orderId, string carrier, int callAttempts, string? note, CancellationToken ct)
+        int orderId, string carrier, int callAttempts, string? manifestNumber, string? qualityReport, string? note, CancellationToken ct)
     {
+        var fullNote = string.IsNullOrWhiteSpace(note) ? string.Empty : note + "\n";
+        if (!string.IsNullOrWhiteSpace(manifestNumber))
+        {
+            fullNote += $"Manifest: {manifestNumber}\n";
+        }
+        if (!string.IsNullOrWhiteSpace(qualityReport))
+        {
+            fullNote += $"Quality report: {qualityReport}\n";
+        }
+
         var result = await _postSales.CreateRtsAsync(
-            orderId, CurrentUserName, carrier, callAttempts, note, ct);
+            orderId, CurrentUserName, carrier, callAttempts, fullNote.Trim(), ct);
+
+        // If manifest/quality provided, update the request directly.
+        if (result.Success && result.Request is { } rtsRequest)
+        {
+            if (!string.IsNullOrWhiteSpace(manifestNumber))
+            {
+                rtsRequest.ManifestNumber = manifestNumber.Trim();
+            }
+            if (!string.IsNullOrWhiteSpace(qualityReport))
+            {
+                rtsRequest.QualityReport = qualityReport.Trim();
+            }
+            await Db.SaveChangesAsync(ct);
+        }
+
         await RecordAsync(result, "post-sale.rts", result.Request?.Id, ct);
         Flash(result.Message, result.Success);
 
-        return result is { Success: true, Request: { } request }
-            ? RedirectToAction(nameof(Details), new { id = request.Id })
+        return result is { Success: true, Request: { } req }
+            ? RedirectToAction(nameof(Details), new { id = req.Id })
             : RedirectToAction(nameof(Rts), new { orderId });
     }
 

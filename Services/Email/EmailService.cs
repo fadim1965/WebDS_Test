@@ -59,6 +59,12 @@ public interface IEmailService
     Task NotifyPayoutIssuedAsync(VendorPayout payout, CancellationToken ct = default);
 
     /// <summary>
+    /// Tells the shopper their post-sale request has been processed: refund issued, promo code
+    /// sent, replacement shipped or repair completed.
+    /// </summary>
+    Task NotifyPostSaleRemedyAsync(PostSaleRequest request, CancellationToken ct = default);
+
+    /// <summary>
     /// Tells a shop's owner the marketplace changed their shop's status.
     /// <paramref name="change"/> is one of <c>approved</c>, <c>rejected</c>, <c>suspended</c>,
     /// <c>reinstated</c> — it names the specific action, so reapprovals mail again.
@@ -283,6 +289,23 @@ public sealed class EmailService : IEmailService
             payout.Shop!.Email, payout.Shop.Name, rendered.Subject, rendered.Html, rendered.Text,
             EmailKind.PayoutIssued, DedupeKey: $"payout-issued:{payout.Id}",
             UserId: payout.Shop.OwnerUserId), ct);
+    }
+
+    public Task NotifyPostSaleRemedyAsync(PostSaleRequest request, CancellationToken ct = default)
+    {
+        var order = request.Order;
+        if (order is null || string.IsNullOrWhiteSpace(order.Email))
+        {
+            return Task.CompletedTask;
+        }
+
+        var rendered = EmailTemplates.PostSaleRemedy(request, _store, _brand);
+
+        // Keyed per request: one remedy notification per post-sale request.
+        return EnqueueAsync(new EmailDraft(
+            order.Email, order.CustomerName, rendered.Subject, rendered.Html, rendered.Text,
+            EmailKind.PostSaleRemedy, DedupeKey: $"post-sale-remedy:{request.Id}",
+            UserId: order.UserId, OrderId: order.Id), ct);
     }
 
     public Task NotifyShopDecisionAsync(Shop shop, string ownerEmail, string change, CancellationToken ct = default)

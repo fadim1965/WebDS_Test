@@ -55,6 +55,10 @@ public sealed class StoreSettings
 
     public int LowStockThreshold { get; set; } = 5;
 
-    /// <summary>Storefront theme: 1 = Amazon-style, 2 = eBay-style, 3 = Etsy-style.</summary>
+    /// <summary>Storefront theme: 1 = Amazon-style, 2 = eBay-style, 3 = Etsy-style,
+    /// 4 = Midnight & Gold, 5 = Poshmark-style.</summary>
     public int Theme { get; set; } = 1;
+
+    /// <summary>Base URL for absolute links in emails (e.g., https://eshop.libanpost.example).</summary>
+    public string BaseUrl { get; set; } = "https://localhost:5000";
 }

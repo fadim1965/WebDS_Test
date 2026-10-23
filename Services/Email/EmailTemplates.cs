@@ -242,6 +242,257 @@ public static class EmailTemplates
     }
 
     /// <summary>
+    /// Post-sale remedy notification: cash refund, promo code, replacement shipped or repair completed.
+    /// </summary>
+    public static RenderedEmail PostSaleRemedy(
+        PostSaleRequest request, StoreSettings store, BrandingOptions brand)
+    {
+        var order = request.Order!;
+        var customerName = Display(order.CustomerName);
+        var orderNumber = order.OrderNumber;
+        var reference = request.Reference;
+
+        var (heading, bodyHtml, bodyText) = request.Type switch
+        {
+            PostSaleType.Cancellation when request.IsPromoCodeRefund => (
+                $"Order {orderNumber} cancelled — your promo code",
+                $"""
+                    <p style="margin:0 0 12px">Hi {Escape(customerName)},</p>
+                    <p style="margin:0 0 12px">
+                      Your cancellation <strong>{Escape(reference)}</strong> for order
+                      <strong>{Escape(orderNumber)}</strong> has been processed.
+                    </p>
+                    <p style="margin:0 0 12px">
+                      As the items had not shipped, a single-use promo code worth
+                      <strong>{Money(request.RefundAmount, store)}</strong> has been issued:
+                    </p>
+                    <p style="margin:0 0 12px;padding:12px;background:{brand.Accent};color:{brand.Ink};
+                          border-radius:4px;font-family:monospace;font-size:16px;font-weight:600">
+                      {Escape(request.PromoCode ?? "—")}
+                    </p>
+                    <p style="margin:16px 0 0;color:{brand.InkSubtle};font-size:13px">
+                      This code is valid for one year and can be used once at checkout.
+                    </p>
+                    """,
+                $"""
+                    Hi {customerName},
+
+                    Your cancellation {reference} for order {orderNumber} has been processed.
+
+                    A single-use promo code worth {request.RefundAmount:N2} has been issued:
+                    {request.PromoCode ?? "—"}
+
+                    This code is valid for one year and can be used once at checkout.
+
+                    {store.Name}
+                    """),
+            PostSaleType.Cancellation => (
+                $"Order {orderNumber} cancelled — refund issued",
+                $"""
+                    <p style="margin:0 0 12px">Hi {Escape(customerName)},</p>
+                    <p style="margin:0 0 12px">
+                      Your cancellation <strong>{Escape(reference)}</strong> for order
+                      <strong>{Escape(orderNumber)}</strong> has been processed. We have refunded
+                      <strong>{Money(request.RefundAmount, store)}</strong> to your original payment
+                      method. Depending on your bank it can take a few days to appear on your
+                      statement.
+                    </p>
+                    """,
+                $"""
+                    Hi {customerName},
+
+                    Your cancellation {reference} for order {orderNumber} has been processed.
+                    We have refunded {request.RefundAmount:N2} to your original payment method.
+                    Depending on your bank it can take a few days to appear on your statement.
+
+                    {store.Name}
+                    """),
+            PostSaleType.Return when request.IsPromoCodeRefund => (
+                $"Return {reference} completed — your promo code",
+                $"""
+                    <p style="margin:0 0 12px">Hi {Escape(customerName)},</p>
+                    <p style="margin:0 0 12px">
+                      Your return <strong>{Escape(reference)}</strong> for order
+                      <strong>{Escape(orderNumber)}</strong> is complete. As this was a
+                      change-of-mind return, a single-use promo code worth
+                      <strong>{Money(request.RefundAmount, store)}</strong> has been issued:
+                    </p>
+                    <p style="margin:0 0 12px;padding:12px;background:{brand.Accent};color:{brand.Ink};
+                          border-radius:4px;font-family:monospace;font-size:16px;font-weight:600">
+                      {Escape(request.PromoCode ?? "—")}
+                    </p>
+                    <p style="margin:16px 0 0;color:{brand.InkSubtle};font-size:13px">
+                      This code is valid for one year and can be used once at checkout.
+                    </p>
+                    """,
+                $"""
+                    Hi {customerName},
+
+                    Your return {reference} for order {orderNumber} is complete.
+                    A single-use promo code worth {request.RefundAmount:N2} has been issued:
+                    {request.PromoCode ?? "—"}
+
+                    This code is valid for one year and can be used once at checkout.
+
+                    {store.Name}
+                    """),
+            PostSaleType.Return => (
+                $"Return {reference} completed — refund issued",
+                $"""
+                    <p style="margin:0 0 12px">Hi {Escape(customerName)},</p>
+                    <p style="margin:0 0 12px">
+                      Your return <strong>{Escape(reference)}</strong> for order
+                      <strong>{Escape(orderNumber)}</strong> is complete. We have refunded
+                      <strong>{Money(request.RefundAmount, store)}</strong> to your original
+                      payment method. Depending on your bank it can take a few days to appear
+                      on your statement.
+                    </p>
+                    """,
+                $"""
+                    Hi {customerName},
+
+                    Your return {reference} for order {orderNumber} is complete.
+                    We have refunded {request.RefundAmount:N2} to your original payment method.
+                    Depending on your bank it can take a few days to appear on your statement.
+
+                    {store.Name}
+                    """),
+            PostSaleType.Exchange => (
+                $"Exchange {reference} — replacement shipped",
+                $"""
+                    <p style="margin:0 0 12px">Hi {Escape(customerName)},</p>
+                    <p style="margin:0 0 12px">
+                      Your exchange <strong>{Escape(reference)}</strong> for order
+                      <strong>{Escape(orderNumber)}</strong> has been processed. A replacement
+                      has been dispatched and will arrive shortly. You will receive a separate
+                      shipping notification with tracking when the carrier scans it.
+                    </p>
+                    """,
+                $"""
+                    Hi {customerName},
+
+                    Your exchange {reference} for order {orderNumber} has been processed.
+                    A replacement has been dispatched. You will receive a shipping notification
+                    with tracking when the carrier scans it.
+
+                    {store.Name}
+                    """),
+            PostSaleType.Warranty when request.CanBeRepaired && !request.CanBeReplaced => (
+                $"Warranty claim {reference} — item repaired",
+                $"""
+                    <p style="margin:0 0 12px">Hi {Escape(customerName)},</p>
+                    <p style="margin:0 0 12px">
+                      Your warranty claim <strong>{Escape(reference)}</strong> for order
+                      <strong>{Escape(orderNumber)}</strong> has been processed. The item has
+                      been repaired under warranty and will be returned to you. You will receive
+                      a shipping notification with tracking when it is dispatched.
+                    </p>
+                    """,
+                $"""
+                    Hi {customerName},
+
+                    Your warranty claim {reference} for order {orderNumber} has been processed.
+                    The item has been repaired under warranty and will be returned to you.
+                    You will receive a shipping notification with tracking when it is dispatched.
+
+                    {store.Name}
+                    """),
+            PostSaleType.Warranty when !request.CanBeRepaired && request.CanBeReplaced => (
+                $"Warranty claim {reference} — replacement issued",
+                $"""
+                    <p style="margin:0 0 12px">Hi {Escape(customerName)},</p>
+                    <p style="margin:0 0 12px">
+                      Your warranty claim <strong>{Escape(reference)}</strong> for order
+                      <strong>{Escape(orderNumber)}</strong> has been processed. The item
+                      cannot be repaired, so a replacement has been issued and will arrive
+                      shortly. You will receive a shipping notification with tracking when
+                      the carrier scans it.
+                    </p>
+                    """,
+                $"""
+                    Hi {customerName},
+
+                    Your warranty claim {reference} for order {orderNumber} has been processed.
+                    The item cannot be repaired, so a replacement has been issued. You will
+                    receive a shipping notification with tracking when the carrier scans it.
+
+                    {store.Name}
+                    """),
+            PostSaleType.Warranty when !request.CanBeRepaired && !request.CanBeReplaced => (
+                $"Warranty claim {reference} — refund issued",
+                $"""
+                    <p style="margin:0 0 12px">Hi {Escape(customerName)},</p>
+                    <p style="margin:0 0 12px">
+                      Your warranty claim <strong>{Escape(reference)}</strong> for order
+                      <strong>{Escape(orderNumber)}</strong> has been processed. The item
+                      cannot be repaired or replaced, so we have refunded
+                      <strong>{Money(request.RefundAmount, store)}</strong> to your original
+                      payment method. Depending on your bank it can take a few days to appear
+                      on your statement.
+                    </p>
+                    """,
+                $"""
+                    Hi {customerName},
+
+                    Your warranty claim {reference} for order {orderNumber} has been processed.
+                    The item cannot be repaired or replaced, so we have refunded
+                    {request.RefundAmount:N2} to your original payment method.
+                    Depending on your bank it can take a few days to appear on your statement.
+
+                    {store.Name}
+                    """),
+            PostSaleType.RTS => (
+                $"Order {orderNumber} returned to sender — refund issued",
+                $"""
+                    <p style="margin:0 0 12px">Hi {Escape(customerName)},</p>
+                    <p style="margin:0 0 12px">
+                      Order <strong>{Escape(orderNumber)}</strong> could not be delivered and
+                      has been returned to sender. We have refunded
+                      <strong>{Money(request.RefundAmount, store)}</strong> for the goods value
+                      to your original payment method. Shipping costs are not refundable for
+                      undeliverable orders.
+                    </p>
+                    <p style="margin:16px 0 0;color:{brand.InkSubtle};font-size:13px">
+                      If you still want the items, please place a new order with an updated
+                      delivery address.
+                    </p>
+                    """,
+                $"""
+                    Hi {customerName},
+
+                    Order {orderNumber} could not be delivered and has been returned to sender.
+                    We have refunded {request.RefundAmount:N2} for the goods value to your
+                    original payment method. Shipping costs are not refundable for undeliverable
+                    orders.
+
+                    If you still want the items, please place a new order with an updated
+                    delivery address.
+
+                    {store.Name}
+                    """),
+            _ => (
+                $"Post-sale request {reference} processed",
+                $"""
+                    <p style="margin:0 0 12px">Hi {Escape(customerName)},</p>
+                    <p style="margin:0 0 12px">
+                      Your post-sale request <strong>{Escape(reference)}</strong> for order
+                      <strong>{Escape(orderNumber)}</strong> has been processed.
+                    </p>
+                    """,
+                $"""
+                    Hi {customerName},
+
+                    Your post-sale request {reference} for order {orderNumber} has been processed.
+
+                    {store.Name}
+                    """)
+        };
+
+        var html = Layout(store, brand, heading, bodyHtml);
+        return new RenderedEmail(heading, html, bodyText);
+    }
+
+    /// <summary>
     /// One message in a shopper–shop conversation, mailed to whichever side did not write it.
     /// </summary>
     public static RenderedEmail ConversationMessage(

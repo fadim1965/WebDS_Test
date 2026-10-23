@@ -86,6 +86,16 @@
                             <dd class="col-sm-8">@(request.Carrier ?? "—")</dd>
                             <dt class="col-sm-4">Call attempts</dt>
                             <dd class="col-sm-8">@request.CallAttempts</dd>
+                            @if (!string.IsNullOrWhiteSpace(request.ManifestNumber))
+                            {
+                                <dt class="col-sm-4">Manifest</dt>
+                                <dd class="col-sm-8">@request.ManifestNumber</dd>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(request.QualityReport))
+                            {
+                                <dt class="col-sm-4">Quality report</dt>
+                                <dd class="col-sm-8" style="white-space: pre-line">@request.QualityReport</dd>
+                            }
                         }
 
                         @if (!string.IsNullOrWhiteSpace(request.PickupTrackingNumber))

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WebDS_Test.Domain;
+using WebDS_Test.Services.Email;
 
 namespace WebDS_Test.Services;
 
@@ -191,15 +192,21 @@ public sealed class PostSaleService : IPostSaleService
     private readonly ApplicationDbContext _db;
     private readonly ILogger<PostSaleService> _logger;
     private readonly IVendorLedgerService? _ledger;
+    private readonly IEmailService? _email;
+    private readonly IPaymentGateway? _payments;
 
     public PostSaleService(
         ApplicationDbContext db,
         ILogger<PostSaleService> logger,
-        IVendorLedgerService? ledger = null)
+        IVendorLedgerService? ledger = null,
+        IEmailService? email = null,
+        IPaymentGateway? payments = null)
     {
         _db = db;
         _logger = logger;
         _ledger = ledger;
+        _email = email;
+        _payments = payments;
     }
 
     // ------------------------------------------------------------------
@@ -305,7 +312,9 @@ public sealed class PostSaleService : IPostSaleService
 
         if (type == PostSaleType.Warranty)
         {
-            purchaseUtc = order.PaidUtc ?? order.PlacedUtc;
+            // Kwikby warranty grace period starts from delivery date when available,
+            // otherwise from paid date, otherwise from placed date.
+            purchaseUtc = order.DeliveredUtc ?? order.PaidUtc ?? order.PlacedUtc;
             graceEndUtc = purchaseUtc.Value.AddDays(3);
             withinGrace = DateTime.UtcNow <= graceEndUtc.Value;
         }
@@ -620,9 +629,23 @@ public sealed class PostSaleService : IPostSaleService
                 request.ProcessedUtc = now;
                 request.ProcessedBy = actor;
                 request.AdminNotes = MergeNote(request.AdminNotes, note);
-                return await MoveAsync(
+                var exchangeResult = await MoveAsync(
                     request, PostSaleStatus.ExchangeShipped, actor,
                     note ?? "Replacement dispatched.", null, ct);
+
+                if (_email is not null)
+                {
+                    try
+                    {
+                        await _email.NotifyPostSaleRemedyAsync(request, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to queue post-sale remedy email for {Reference}", request.Reference);
+                    }
+                }
+
+                return exchangeResult;
             }
 
             case PostSaleType.Warranty when !request.WithinGracePeriod && request.CanBeRepaired:
@@ -631,9 +654,23 @@ public sealed class PostSaleService : IPostSaleService
                 request.ProcessedUtc = now;
                 request.ProcessedBy = actor;
                 request.AdminNotes = MergeNote(request.AdminNotes, note);
-                return await MoveAsync(
+                var repairResult = await MoveAsync(
                     request, PostSaleStatus.Processed, actor,
                     note ?? "Item repaired under warranty.", null, ct);
+
+                if (_email is not null)
+                {
+                    try
+                    {
+                        await _email.NotifyPostSaleRemedyAsync(request, ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to queue post-sale remedy email for {Reference}", request.Reference);
+                    }
+                }
+
+                return repairResult;
             }
         }
 
@@ -662,13 +699,41 @@ public sealed class PostSaleService : IPostSaleService
 
             if (refund > 0)
             {
+                // If the original order was paid by card and we have a gateway, refund through it.
+                string? refundTransactionId = null;
+                if (_payments is not null && order.PaymentMethod == PaymentMethod.Card)
+                {
+                    var successfulPayment = await _db.Payments
+                        .Where(p => p.OrderId == order.Id
+                                 && p.Status == PaymentStatus.Succeeded
+                                 && !string.IsNullOrWhiteSpace(p.TransactionId))
+                        .OrderByDescending(p => p.CompletedUtc)
+                        .FirstOrDefaultAsync(ct);
+
+                    if (successfulPayment is not null)
+                    {
+                        var receipt = await _payments.RefundAsync(successfulPayment.TransactionId, refund, ct);
+                        if (receipt.Success)
+                        {
+                            refundTransactionId = receipt.TransactionId;
+                        }
+                        else
+                        {
+                            _logger.LogWarning(
+                                "Post-sale gateway refund failed for {Reference}: {Reason}",
+                                request.Reference, receipt.FailureReason);
+                        }
+                    }
+                }
+
                 _db.Payments.Add(new Payment
                 {
                     OrderId = order.Id,
-                    Provider = "post-sale",
+                    Provider = refundTransactionId is not null ? _payments?.GetType().Name ?? "gateway" : "post-sale",
                     Amount = refund,
                     Currency = "USD",
                     Status = PaymentStatus.Refunded,
+                    TransactionId = refundTransactionId,
                     IsTest = false,
                     CreatedUtc = now,
                     CompletedUtc = now
@@ -704,8 +769,23 @@ public sealed class PostSaleService : IPostSaleService
               + (request.IsPromoCodeRefund ? $" as promo code {request.PromoCode}" : string.Empty)
             : "No money is due under the applicable rules";
 
-        return await MoveAsync(
+        var result = await MoveAsync(
             request, PostSaleStatus.Processed, actor, message, null, ct);
+
+        // Notify the customer of the remedy (refund, promo code, replacement, repair).
+        if (_email is not null)
+        {
+            try
+            {
+                await _email.NotifyPostSaleRemedyAsync(request, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to queue post-sale remedy email for {Reference}", request.Reference);
+            }
+        }
+
+        return result;
     }
 
     /// <inheritdoc />

@@ -33,6 +33,7 @@ public static class EmailKind
     public const string ListingDecision = "listing-decision";
     public const string PasswordReset = "password-reset";
     public const string ConversationMessage = "conversation-message";
+    public const string PostSaleRemedy = "post-sale-remedy";
     public const string Test = "test";
 }
 
