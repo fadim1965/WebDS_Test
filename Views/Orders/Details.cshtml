@@ -346,6 +346,64 @@ else if (stopped)
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-2">Cancellations, exchanges &amp; warranty</h2>
+                @{
+                    var postSales = ViewData["PostSales"] as IReadOnlyList<WebDS_Test.Domain.PostSaleRequest>;
+                    var canCancel = order.Status is WebDS_Test.Domain.OrderStatus.Pending
+                        or WebDS_Test.Domain.OrderStatus.Paid
+                        && string.IsNullOrWhiteSpace(order.TrackingNumber);
+                    var canReturn = order.Status is WebDS_Test.Domain.OrderStatus.Paid
+                        or WebDS_Test.Domain.OrderStatus.Shipped or WebDS_Test.Domain.OrderStatus.Delivered;
+                }
+                @if (postSales is { Count: > 0 })
+                {
+                    <ul class="list-unstyled mb-3">
+                        @foreach (var item in postSales)
+                        {
+                            <li class="d-flex flex-wrap justify-content-between align-items-center gap-2 py-1">
+                                <div>
+                                    <strong>@item.Reference</strong>
+                                    <span class="text-muted small">
+                                        @item.Type.ToDisplay()
+                                        · @item.Status.ToDisplay()
+                                    </span>
+                                </div>
+                                <a class="btn btn-outline-secondary btn-sm"
+                                   asp-controller="PostSale" asp-action="Details" asp-route-id="@item.Id">Open</a>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted small mb-3">No after-sales request on this order yet.</p>
+                }
+
+                <div class="d-flex flex-wrap gap-2">
+                    @if (canCancel)
+                    {
+                        <a class="btn btn-outline-danger btn-sm"
+                           asp-controller="PostSale" asp-action="Create"
+                           asp-route-orderId="@order.Id"
+                           asp-route-type="@WebDS_Test.Domain.PostSaleType.Cancellation">Cancel order</a>
+                    }
+                    @if (canReturn)
+                    {
+                        <a class="btn btn-outline-primary btn-sm"
+                           asp-controller="PostSale" asp-action="Create"
+                           asp-route-orderId="@order.Id"
+                           asp-route-type="@WebDS_Test.Domain.PostSaleType.Return">Return or exchange</a>
+                        <a class="btn btn-outline-secondary btn-sm"
+                           asp-controller="PostSale" asp-action="Create"
+                           asp-route-orderId="@order.Id"
+                           asp-route-type="@WebDS_Test.Domain.PostSaleType.Warranty">Warranty claim</a>
+                    }
+                </div>
+            </div>
+        </div>
+
         <div class="d-grid gap-2">
             <a class="btn btn-primary" asp-controller="Orders" asp-action="Index">Back to your orders</a>
             <a class="btn btn-outline-secondary" asp-controller="Catalog" asp-action="Index">Continue shopping</a>

@@ -1,0 +1,125 @@
+@model PostSaleRequest
+@inject WebDS_Test.Services.ICurrencyFormatter Money
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+            <h1 class="h3 mb-1">@Model.Reference</h1>
+            <p class="text-muted mb-0">
+                @Model.Type.ToDisplay() ·
+                @(Model.IsOrderLevel ? "whole order" : Model.OrderLine?.ProductName) ·
+                @Model.CreatedUtc.ToString("yyyy-MM-dd HH:mm") UTC
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge @Model.Status.ToCssClass() fs-6">@Model.Status.ToDisplay()</span>
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Index">Back</a>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="card mb-3">
+                <div class="card-header"><h2 class="h6 mb-0">Case</h2></div>
+                <div class="card-body">
+                    <dl class="row small mb-0">
+                        <dt class="col-sm-4">Order</dt>
+                        <dd class="col-sm-8">@Model.Order?.OrderNumber</dd>
+                        <dt class="col-sm-4">Reason</dt>
+                        <dd class="col-sm-8">@Model.Reason.ToDisplay()</dd>
+                        <dt class="col-sm-4">Remedy</dt>
+                        <dd class="col-sm-8">
+                            @if (Model.RefundAmount > 0)
+                            {
+                                @Money.Format(Model.RefundAmount)
+                                @if (Model.IsPromoCodeRefund)
+                                {
+                                    <span class="text-muted">(promo code)</span>
+                                }
+                            }
+                            else if (Model.Type == PostSaleType.Exchange)
+                            {
+                                <span>Replacement</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No monetary remedy</span>
+                            }
+                        </dd>
+                        @if (!string.IsNullOrWhiteSpace(Model.ReasonDetail))
+                        {
+                            <dt class="col-sm-4">Customer note</dt>
+                            <dd class="col-sm-8" style="white-space: pre-line">@Model.ReasonDetail</dd>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.SerialNumber))
+                        {
+                            <dt class="col-sm-4">Serial number</dt>
+                            <dd class="col-sm-8">@Model.SerialNumber</dd>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.AdminNotes))
+                        {
+                            <dt class="col-sm-4">LibanPost notes</dt>
+                            <dd class="col-sm-8" style="white-space: pre-line">@Model.AdminNotes</dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><h2 class="h6 mb-0">Progress</h2></div>
+                <div class="card-body">
+                    <ol class="list-unstyled mb-0">
+                        @foreach (var step in Model.StatusHistory.OrderBy(h => h.CreatedUtc))
+                        {
+                            <li class="d-flex gap-3 pb-2">
+                                <span class="text-muted small text-nowrap">@step.CreatedUtc.ToString("dd MMM HH:mm")</span>
+                                <span>
+                                    <span class="badge @step.ToStatus.ToCssClass()">@step.ToStatus.ToDisplay()</span>
+                                    @if (!string.IsNullOrWhiteSpace(step.Note))
+                                    {
+                                        <span class="small">@step.Note</span>
+                                    }
+                                </span>
+                            </li>
+                        }
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header"><h2 class="h6 mb-0">Conversation</h2></div>
+                <div class="card-body">
+                    @if (Model.Messages.Count == 0)
+                    {
+                        <p class="text-muted small mb-3">No messages yet.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled mb-3">
+                            @foreach (var message in Model.Messages.OrderBy(m => m.CreatedUtc))
+                            {
+                                <li class="mb-3">
+                                    <div class="small text-muted">
+                                        <strong>@(message.IsFromCustomer ? "Customer" : message.SenderName)</strong>
+                                        · @message.CreatedUtc.ToString("dd MMM HH:mm")
+                                    </div>
+                                    <div class="small" style="white-space: pre-line">@message.Content</div>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    <form asp-action="Message" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <textarea name="content" class="form-control form-control-sm mb-2" rows="3"
+                                  maxlength="2000" placeholder="Add a note for the customer…"></textarea>
+                        <button class="btn btn-outline-primary btn-sm">Send</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

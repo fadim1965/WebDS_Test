@@ -1,0 +1,184 @@
+@model PostSaleRequest
+@inject WebDS_Test.Services.ICurrencyFormatter Money
+@{
+    var request = Model;
+    var isOpen = request.IsOpen;
+    var remedy = request.IsPromoCodeRefund
+        ? $"{Money.Format(request.RefundAmount)} promo code"
+        : request.RefundAmount > 0
+            ? Money.Format(request.RefundAmount)
+            : request.Type == PostSaleType.Exchange ? "Replacement" : "No monetary remedy";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb small">
+                <li class="breadcrumb-item"><a asp-action="Index">After-sales requests</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@request.Reference</li>
+            </ol>
+        </nav>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                    <div>
+                        <h1 class="h4 mb-1">@request.Reference</h1>
+                        <p class="text-muted small mb-0">
+                            @request.Type.ToDisplay() ·
+                            @(request.IsOrderLevel ? "whole order" : request.OrderLine?.ProductName)
+                            · raised @request.CreatedUtc.ToString("d MMM yyyy HH:mm") UTC
+                        </p>
+                    </div>
+                    <span class="badge @request.Status.ToCssClass() fs-6">@request.Status.ToDisplay()</span>
+                </div>
+
+                <dl class="row small mb-0">
+                    <dt class="col-sm-4">Order</dt>
+                    <dd class="col-sm-8">
+                        <a asp-controller="Orders" asp-action="Details" asp-route-id="@request.OrderId">
+                            @request.Order?.OrderNumber
+                        </a>
+                    </dd>
+
+                    <dt class="col-sm-4">Reason</dt>
+                    <dd class="col-sm-8">@request.Reason.ToDisplay()</dd>
+
+                    <dt class="col-sm-4">Remedy</dt>
+                    <dd class="col-sm-8">
+                        @remedy
+                        @if (!string.IsNullOrWhiteSpace(request.PromoCode))
+                        {
+                            <div class="mt-1">
+                                Your code: <code class="fs-6">@request.PromoCode</code>
+                                <span class="text-muted">(single use, valid for one year)</span>
+                            </div>
+                        }
+                    </dd>
+
+                    @if (!string.IsNullOrWhiteSpace(request.ReasonDetail))
+                    {
+                        <dt class="col-sm-4">Your note</dt>
+                        <dd class="col-sm-8" style="white-space: pre-line">@request.ReasonDetail</dd>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(request.PickupTrackingNumber))
+                    {
+                        <dt class="col-sm-4">Pickup tracking</dt>
+                        <dd class="col-sm-8">@request.PickupTrackingNumber</dd>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(request.AdminNotes))
+                    {
+                        <dt class="col-sm-4">LibanPost notes</dt>
+                        <dd class="col-sm-8" style="white-space: pre-line">@request.AdminNotes</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="h6 mb-0">Who pays what</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Cost</th>
+                            <th scope="col">Borne by</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Item price</td><td>@request.FeeAllocation.ItemPriceBearer.ToDisplay()</td></tr>
+                        <tr><td>Shipping</td><td>@request.FeeAllocation.ShippingFeeBearer.ToDisplay()</td></tr>
+                        <tr><td>Card fee</td><td>@request.FeeAllocation.CreditCardFeeBearer.ToDisplay()</td></tr>
+                        <tr><td>Pickup</td><td>@request.FeeAllocation.PickupFeeBearer.ToDisplay()</td></tr>
+                        <tr><td>Replacement</td><td>@request.FeeAllocation.ReplacementFeeBearer.ToDisplay()</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-body py-2">
+                <p class="text-muted small mb-0">
+                    The split is fixed when the request is raised, using the LibanPost post-sale rules.
+                    A change of mind is refunded as a promo code rather than cash.
+                </p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="h6 mb-0">Progress</h2>
+            </div>
+            <div class="card-body">
+                <ol class="list-unstyled mb-0">
+                    @foreach (var step in request.StatusHistory.OrderBy(h => h.CreatedUtc))
+                    {
+                        <li class="d-flex gap-3 pb-2">
+                            <span class="text-muted small text-nowrap">@step.CreatedUtc.ToString("d MMM HH:mm")</span>
+                            <span>
+                                <span class="badge @step.ToStatus.ToCssClass()">@step.ToStatus.ToDisplay()</span>
+                                @if (!string.IsNullOrWhiteSpace(step.Note))
+                                {
+                                    <span class="small">@step.Note</span>
+                                }
+                            </span>
+                        </li>
+                    }
+                </ol>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="h6 mb-0">Messages</h2>
+            </div>
+            <div class="card-body">
+                @if (request.Messages.Count == 0)
+                {
+                    <p class="text-muted small mb-3">No messages yet.</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-3">
+                        @foreach (var message in request.Messages.OrderBy(m => m.CreatedUtc))
+                        {
+                            <li class="mb-3">
+                                <div class="small text-muted">
+                                    <strong>@(message.IsFromCustomer ? "You" : "LibanPost")</strong>
+                                    · @message.CreatedUtc.ToString("d MMM yyyy HH:mm") UTC
+                                </div>
+                                <div style="white-space: pre-line">@message.Content</div>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                @if (request.IsOpen)
+                {
+                    <form asp-action="Message" asp-route-id="@request.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-2">
+                            <label for="content" class="form-label small">Add a message</label>
+                            <textarea id="content" name="content" class="form-control" rows="3" maxlength="2000"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary btn-sm">Send</button>
+                    </form>
+                }
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-secondary" asp-controller="Orders" asp-action="Details" asp-route-id="@request.OrderId">
+                Back to order
+            </a>
+            @if (request.Status == PostSaleStatus.Pending)
+            {
+                <form asp-action="Withdraw" asp-route-id="@request.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-danger">Withdraw request</button>
+                </form>
+            }
+        </div>
+    </div>
+</div>

@@ -76,6 +76,68 @@
             </div>
 
             @{
+                var sellerFulfilment = ViewData["SellerFulfilment"] as WebDS_Test.Domain.SellerFulfilment;
+            }
+            <div class="card mb-3">
+                <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+                    <span>Packages &amp; labels</span>
+                    <a class="small" asp-area="Vendor" asp-controller="PostSale" asp-action="Fulfilments">All packages</a>
+                </div>
+                <div class="card-body small">
+                    @if (sellerFulfilment is null)
+                    {
+                        <p class="text-muted">
+                            Count the packages, put each one in a nylon pocket, attach the invoice,
+                            then request the LibanPost labels.
+                        </p>
+                        @if (Model.Status is OrderStatus.Pending or OrderStatus.Paid)
+                        {
+                            <form asp-area="Vendor" asp-controller="PostSale" asp-action="ConfirmFulfilment" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="orderId" value="@Model.Id" />
+                                <label class="form-label" for="packageCount">Packages</label>
+                                <input class="form-control form-control-sm mb-2" id="packageCount" name="packageCount"
+                                       type="number" min="1" max="100" value="1" required />
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input" type="checkbox" id="nylon" name="hasNylonPockets" value="true" />
+                                    <label class="form-check-label" for="nylon">Nylon pockets attached</label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="invoice" name="invoiceAttached" value="true" />
+                                    <label class="form-check-label" for="invoice">Invoice inside the package</label>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary w-100">Confirm packages</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0">This order has already left your shop.</p>
+                        }
+                    }
+                    else
+                    {
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge @sellerFulfilment.Status.ToCssClass()">@sellerFulfilment.Status.ToDisplay()</span>
+                            <span class="text-muted">@sellerFulfilment.PackageCount package(s)</span>
+                        </div>
+                        <dl class="row small mb-0">
+                            <dt class="col-6 fw-normal text-muted">Nylon pockets</dt>
+                            <dd class="col-6">@(sellerFulfilment.HasNylonPockets ? "Attached" : "Missing")</dd>
+                            <dt class="col-6 fw-normal text-muted">Invoice</dt>
+                            <dd class="col-6">@(sellerFulfilment.InvoiceAttached ? "Attached" : "Missing")</dd>
+                            <dt class="col-6 fw-normal text-muted">Labels</dt>
+                            <dd class="col-6">@sellerFulfilment.LabelsGenerated</dd>
+                            @if (sellerFulfilment.PickedUpByShipperUtc is { } pickedUp)
+                            {
+                                <dt class="col-6 fw-normal text-muted">Picked up</dt>
+                                <dd class="col-6">@pickedUp.ToString("d MMM HH:mm")</dd>
+                            }
+                        </dl>
+                    }
+                </div>
+            </div>
+
+            @{
                 var shipments = ViewData["Shipments"] as IReadOnlyList<WebDS_Test.Domain.OrderShipment>
                                 ?? Array.Empty<WebDS_Test.Domain.OrderShipment>();
                 var carrierName = ViewData["CarrierName"] as string ?? "the carrier";

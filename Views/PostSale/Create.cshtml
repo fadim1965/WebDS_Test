@@ -1,0 +1,115 @@
+@model WebDS_Test.Controllers.PostSaleCreateViewModel
+@inject WebDS_Test.Services.ICurrencyFormatter Money
+@{
+    var title = Model.Type switch
+    {
+        PostSaleType.Cancellation => "Cancel an order",
+        PostSaleType.Exchange => "Exchange an item",
+        PostSaleType.Warranty => "Raise a warranty claim",
+        _ => "Return an item"
+    };
+
+    var blurb = Model.Type switch
+    {
+        PostSaleType.Cancellation =>
+            "Cancelling before the parcel is packed refunds the goods, shipping and card fee. "
+            + "Once a tracking number has been issued the order can no longer be cancelled.",
+        PostSaleType.Exchange =>
+            "An exchange replaces the item. Before dispatch there is no charge; after delivery the "
+            + "return rules apply.",
+        PostSaleType.Warranty =>
+            "Defective items are repaired or replaced at the seller's cost. Inside three days of "
+            + "purchase a full refund is also available.",
+        _ =>
+            "If the item is not as described, wrong or damaged, the seller covers the return. "
+            + "A change of mind is refunded as a promo code, per the local return policy."
+    };
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb small">
+                <li class="breadcrumb-item"><a asp-controller="Orders" asp-action="Index">Your orders</a></li>
+                <li class="breadcrumb-item">
+                    <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.OrderId">@Model.OrderNumber</a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">@title</li>
+            </ol>
+        </nav>
+
+        <div class="card">
+            <div class="card-body">
+                <h1 class="h4 mb-1">@title</h1>
+                <p class="text-muted small mb-4">@blurb</p>
+
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="OrderId" />
+                    <input type="hidden" asp-for="OrderNumber" />
+                    <input type="hidden" asp-for="Type" />
+
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="OrderLineId" class="form-label">
+                            @(Model.Type == PostSaleType.Warranty ? "Which item?" : "Which item? (leave blank for the whole order)")
+                        </label>
+                        <select asp-for="OrderLineId" class="form-select">
+                            <option value="">Whole order</option>
+                            @foreach (var line in Model.Lines)
+                            {
+                                <option value="@line.OrderLineId">
+                                    @line.ProductName@(string.IsNullOrWhiteSpace(line.VariantName) ? "" : $" — {line.VariantName}")
+                                    (@line.Quantity × @Money.Format(line.LineTotal / Math.Max(1, line.Quantity)))
+                                </option>
+                            }
+                        </select>
+                        <div class="form-text">
+                            A warranty claim must name the defective item.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Reason" class="form-label">Reason</label>
+                        <select asp-for="Reason" class="form-select">
+                            @foreach (var reason in Enum.GetValues<PostSaleReason>())
+                            {
+                                <option value="@reason">@reason.ToDisplay()</option>
+                            }
+                        </select>
+                    </div>
+
+                    @if (Model.Type == PostSaleType.Warranty)
+                    {
+                        <div class="mb-3">
+                            <label asp-for="SerialNumber" class="form-label"></label>
+                            <input asp-for="SerialNumber" class="form-control" autocomplete="off" />
+                            <span asp-validation-for="SerialNumber" class="text-danger small"></span>
+                            <div class="form-text">
+                                Printed on the item or its packaging. The seller uses it to verify the warranty.
+                            </div>
+                        </div>
+                    }
+
+                    <div class="mb-4">
+                        <label asp-for="Detail" class="form-label"></label>
+                        <textarea asp-for="Detail" class="form-control" rows="4"
+                                  placeholder="What happened? Include anything the operator needs to decide the case."></textarea>
+                        <span asp-validation-for="Detail" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary">Send request</button>
+                        <a class="btn btn-outline-secondary"
+                           asp-controller="Orders" asp-action="Details" asp-route-id="@Model.OrderId">Back to order</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

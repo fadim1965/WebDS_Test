@@ -40,6 +40,12 @@ public class ApplicationDbContext : DbContext
     public DbSet<ReturnRequest> ReturnRequests => Set<ReturnRequest>();
     public DbSet<ReturnLine> ReturnLines => Set<ReturnLine>();
 
+    // Post-sale processes: cancellation, return, exchange, RTS and warranty
+    public DbSet<PostSaleRequest> PostSaleRequests => Set<PostSaleRequest>();
+    public DbSet<PostSaleMessage> PostSaleMessages => Set<PostSaleMessage>();
+    public DbSet<PostSaleStatusHistory> PostSaleStatusHistory => Set<PostSaleStatusHistory>();
+    public DbSet<SellerFulfilment> SellerFulfilments => Set<SellerFulfilment>();
+
     // Admin audit trail
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
@@ -304,6 +310,95 @@ public class ApplicationDbContext : DbContext
             e.HasOne(l => l.OrderLine)
                 .WithMany()
                 .HasForeignKey(l => l.OrderLineId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ---------------------------------------------------------------
+        // Post-sale processes
+        // ---------------------------------------------------------------
+
+        b.Entity<PostSaleRequest>(e =>
+        {
+            e.HasIndex(r => r.Reference).IsUnique();
+            e.HasIndex(r => r.OrderId);
+            e.HasIndex(r => r.ShopId);
+            e.HasIndex(r => r.CustomerId);
+            e.HasIndex(r => r.Status);
+            e.HasIndex(r => r.Type);
+            e.Property(r => r.RefundAmount).HasPrecision(18, 2);
+
+            // The fee split is part of the request's own row: it is a value, not an entity, and it
+            // must be readable with the document rather than recomputed under today's rules.
+            e.OwnsOne(r => r.FeeAllocation, fees =>
+            {
+                fees.Property(f => f.ItemPriceBearer).HasColumnName("ItemPriceBearer");
+                fees.Property(f => f.ShippingFeeBearer).HasColumnName("ShippingFeeBearer");
+                fees.Property(f => f.CreditCardFeeBearer).HasColumnName("CreditCardFeeBearer");
+                fees.Property(f => f.PickupFeeBearer).HasColumnName("PickupFeeBearer");
+                fees.Property(f => f.ReturnFeeBearer).HasColumnName("ReturnFeeBearer");
+                fees.Property(f => f.ReplacementFeeBearer).HasColumnName("ReplacementFeeBearer");
+            });
+            e.Navigation(r => r.FeeAllocation).IsRequired();
+
+            // Owners are restricted, the way an order and a return are: history is never deleted
+            // behind the request that describes it, and SQL Server then has a single delete path.
+            e.HasOne(r => r.Order)
+                .WithMany()
+                .HasForeignKey(r => r.OrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.OrderLine)
+                .WithMany()
+                .HasForeignKey(r => r.OrderLineId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.Shop)
+                .WithMany()
+                .HasForeignKey(r => r.ShopId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(r => r.Customer)
+                .WithMany()
+                .HasForeignKey(r => r.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // A replacement variant may be withdrawn from the catalogue later; the request keeps
+            // the decision either way.
+            e.HasOne(r => r.ReplacementVariant)
+                .WithMany()
+                .HasForeignKey(r => r.ReplacementVariantId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        b.Entity<PostSaleMessage>(e =>
+        {
+            e.HasIndex(m => m.PostSaleRequestId);
+            e.HasOne(m => m.PostSaleRequest)
+                .WithMany(r => r.Messages)
+                .HasForeignKey(m => m.PostSaleRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<PostSaleStatusHistory>(e =>
+        {
+            e.HasIndex(h => h.PostSaleRequestId);
+            e.HasOne(h => h.PostSaleRequest)
+                .WithMany(r => r.StatusHistory)
+                .HasForeignKey(h => h.PostSaleRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<SellerFulfilment>(e =>
+        {
+            // One fulfilment record per order: checkout already splits a mixed cart into one order
+            // per shop, so an order is a single consignment and a second record would be a bug.
+            e.HasIndex(f => f.OrderId).IsUnique();
+            e.HasIndex(f => f.ShopId);
+            e.HasIndex(f => f.Status);
+            e.HasOne(f => f.Order)
+                .WithMany()
+                .HasForeignKey(f => f.OrderId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(f => f.Shop)
+                .WithMany()
+                .HasForeignKey(f => f.ShopId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

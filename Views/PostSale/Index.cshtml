@@ -1,0 +1,88 @@
+@model IReadOnlyList<PostSaleRequest>
+@inject WebDS_Test.Services.ICurrencyFormatter Money
+@{
+    var requests = Model ?? Array.Empty<PostSaleRequest>();
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Cancellations, returns &amp; exchanges</h1>
+        <p class="text-muted small mb-0">
+            Every after-sales request on this account, newest first.
+        </p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-controller="Orders" asp-action="Index">Your orders</a>
+</div>
+
+@if (requests.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <h2 class="h5">Nothing to resolve</h2>
+            <p class="text-muted mb-3">
+                Open an order and choose <strong>Cancel</strong>, <strong>Return or exchange</strong>
+                or <strong>Warranty</strong> to raise a request.
+            </p>
+            <a class="btn btn-primary" asp-controller="Orders" asp-action="Index">View your orders</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Reference</th>
+                        <th scope="col">Order</th>
+                        <th scope="col">Request</th>
+                        <th scope="col">Raised</th>
+                        <th scope="col" class="text-end">Remedy</th>
+                        <th scope="col">Status</th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var request in requests)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@request.Reference</td>
+                            <td>@request.Order?.OrderNumber</td>
+                            <td>
+                                @request.Type.ToDisplay()
+                                <div class="small text-muted">
+                                    @(request.IsOrderLevel ? "Whole order" : request.OrderLine?.ProductName)
+                                </div>
+                            </td>
+                            <td class="small text-muted">@request.CreatedUtc.ToString("d MMM yyyy")</td>
+                            <td class="text-end">
+                                @if (request.IsPromoCodeRefund)
+                                {
+                                    <span class="small">@Money.Format(request.RefundAmount) promo code</span>
+                                }
+                                else if (request.RefundAmount > 0)
+                                {
+                                    <span>@Money.Format(request.RefundAmount)</span>
+                                }
+                                else if (request.Type == PostSaleType.Exchange)
+                                {
+                                    <span class="text-muted small">Replacement</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td><span class="badge @request.Status.ToCssClass()">@request.Status.ToDisplay()</span></td>
+                            <td class="text-end">
+                                <a class="btn btn-outline-primary btn-sm"
+                                   asp-action="Details" asp-route-id="@request.Id">Open</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

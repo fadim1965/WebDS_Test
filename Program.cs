@@ -158,6 +158,7 @@ builder.Services.AddScoped<ICouponService, CouponService>();
 // Returns and the admin audit trail. ReturnService shares the payment gateway and email outbox with
 // OrderService, so a refund through a return behaves like a refund through the order page.
 builder.Services.AddScoped<IReturnService, ReturnService>();
+builder.Services.AddScoped<IPostSaleService, PostSaleService>();
 builder.Services.AddScoped<IAuditTrail, AuditTrail>();
 
 // Shopper <-> shop conversations. Shares the email outbox with the order and return services, so

@@ -1,0 +1,84 @@
+@model IReadOnlyList<PostSaleRequest>
+@inject WebDS_Test.Services.ICurrencyFormatter Money
+@{
+    var openOnly = ViewData["OpenOnly"] as bool?;
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">After-sales</h1>
+            <p class="text-muted mb-0">
+                Cancellations, returns, exchanges and warranty claims on @ViewData["ShopName"].
+                LibanPost decides the case; you can follow it and answer questions here.
+            </p>
+        </div>
+        <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Returns" asp-action="Index">Returns</a>
+    </div>
+
+    <div class="btn-group btn-group-sm mt-2" role="group" aria-label="After-sales filter">
+        <a class="btn btn-outline-secondary @(openOnly == true ? "" : "active")" asp-action="Index">All</a>
+        <a class="btn btn-outline-secondary @(openOnly == true ? "active" : "")" asp-action="Index" asp-route-open="true">Open only</a>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="alert alert-light border mt-3">No after-sales requests here.</div>
+    }
+    else
+    {
+        <div class="table-responsive mt-3">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Reference</th>
+                        <th>Order</th>
+                        <th>Process</th>
+                        <th>Raised</th>
+                        <th class="text-end">Remedy</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var request in Model)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@request.Reference</td>
+                            <td>@request.Order?.OrderNumber</td>
+                            <td>
+                                @request.Type.ToDisplay()
+                                <div class="small text-muted">
+                                    @(request.IsOrderLevel ? "Whole order" : request.OrderLine?.ProductName)
+                                </div>
+                            </td>
+                            <td class="small text-nowrap">@request.CreatedUtc.ToString("yyyy-MM-dd")</td>
+                            <td class="text-end text-nowrap">
+                                @if (request.RefundAmount > 0)
+                                {
+                                    @Money.Format(request.RefundAmount)
+                                    @if (request.IsPromoCodeRefund)
+                                    {
+                                        <div class="small text-muted">promo code</div>
+                                    }
+                                }
+                                else if (request.Type == PostSaleType.Exchange)
+                                {
+                                    <span class="small text-muted">Replacement</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td><span class="badge @request.Status.ToCssClass()">@request.Status.ToDisplay()</span></td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@request.Id">Open</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

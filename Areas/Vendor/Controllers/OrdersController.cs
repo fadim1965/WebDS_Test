@@ -22,6 +22,7 @@ public class OrdersController : Controller
     private readonly IFulfilmentService _fulfilment;
     private readonly ICarrierRegistry _carriers;
     private readonly IReturnService _returns;
+    private readonly IPostSaleService _postSales;
     private readonly StoreSettings _settings;
 
     public OrdersController(
@@ -31,6 +32,7 @@ public class OrdersController : Controller
         IFulfilmentService fulfilment,
         ICarrierRegistry carriers,
         IReturnService returns,
+        IPostSaleService postSales,
         IOptions<StoreSettings> settings)
     {
         _db = db;
@@ -39,6 +41,7 @@ public class OrdersController : Controller
         _fulfilment = fulfilment;
         _carriers = carriers;
         _returns = returns;
+        _postSales = postSales;
         _settings = settings.Value;
     }
 
@@ -102,6 +105,7 @@ public class OrdersController : Controller
             .OrderByDescending(s => s.CreatedUtc)
             .ToList();
         ViewData["Returns"] = await _returns.GetForOrderAsync(order.Id, ct);
+        ViewData["SellerFulfilment"] = await _postSales.GetFulfilmentAsync(order.Id, shop.Id, ct);
         ViewData["CarrierName"] = _carriers.Default.DisplayName;
         return View(order);
     }

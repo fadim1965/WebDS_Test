@@ -87,6 +87,11 @@ public static class DbSeeder
         // which already exists, so they are added on demand before anything reads them.
         await TwoFactorSchema.EnsureAsync(db, ct);
 
+        // The post-sale processes (cancellation, return, exchange, RTS, warranty) and the seller
+        // fulfilment record postdate the store as whole tables, so they are created before the
+        // first order page can offer a "cancel/return" action.
+        await PostSaleSchema.EnsureAsync(db, ct);
+
         // One standard-rate class so the feature is usable and visible on a fresh store. Products are
         // left unassigned on purpose: an unassigned product falls back to Store:TaxRate, which is the
         // behaviour every order had before this feature existed.

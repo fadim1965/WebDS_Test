@@ -1,0 +1,90 @@
+@model IReadOnlyList<SellerFulfilment>
+@{
+    var openOnly = ViewData["OpenOnly"] as bool? ?? true;
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Packages &amp; labels</h1>
+            <p class="text-muted mb-0">
+                Seller-confirmed packages waiting for LibanPost labels and shipper collection.
+            </p>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index">After-sales queue</a>
+    </div>
+
+    <div class="btn-group btn-group-sm mt-2" role="group" aria-label="Fulfilment filter">
+        <a class="btn btn-outline-secondary @(openOnly ? "active" : "")" asp-action="Fulfilments" asp-route-openOnly="true">Open only</a>
+        <a class="btn btn-outline-secondary @(openOnly ? "" : "active")" asp-action="Fulfilments" asp-route-openOnly="false">All</a>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="alert alert-light border mt-3">
+            @(openOnly ? "No packages are waiting for labels." : "No seller has confirmed packages yet.")
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive mt-3">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Order</th>
+                        <th>Shop</th>
+                        <th class="text-end">Packages</th>
+                        <th>Nylon</th>
+                        <th>Invoice</th>
+                        <th class="text-end">Labels</th>
+                        <th>Status</th>
+                        <th>Confirmed</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var fulfilment in Model)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-area="Admin" asp-controller="Orders" asp-action="Details"
+                                   asp-route-id="@fulfilment.OrderId">@fulfilment.Order?.OrderNumber</a>
+                            </td>
+                            <td>@fulfilment.Shop?.Name</td>
+                            <td class="text-end">@fulfilment.PackageCount</td>
+                            <td>@(fulfilment.HasNylonPockets ? "Attached" : "Missing")</td>
+                            <td>@(fulfilment.InvoiceAttached ? "Attached" : "Missing")</td>
+                            <td class="text-end">@fulfilment.LabelsGenerated</td>
+                            <td><span class="badge @fulfilment.Status.ToCssClass()">@fulfilment.Status.ToDisplay()</span></td>
+                            <td class="small text-nowrap">
+                                @(fulfilment.SellerConfirmedUtc?.ToString("yyyy-MM-dd HH:mm") ?? "—")
+                            </td>
+                            <td class="text-end">
+                                @if (fulfilment.Status == FulfilmentStatus.AwaitingLabelGeneration)
+                                {
+                                    <form asp-action="GenerateLabels" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@fulfilment.Id" />
+                                        <button class="btn btn-sm btn-primary">Generate labels</button>
+                                    </form>
+                                }
+                                else if (fulfilment.Status == FulfilmentStatus.LabelsGenerated)
+                                {
+                                    <form asp-action="RecordPickup" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@fulfilment.Id" />
+                                        <button class="btn btn-sm btn-outline-primary">Record pickup</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

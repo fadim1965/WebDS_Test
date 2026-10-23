@@ -17,17 +17,20 @@ public class OrdersController : StoreControllerBase
 
     private readonly IOrderService _orders;
     private readonly IReturnService _returns;
+    private readonly IPostSaleService _postSales;
 
     public OrdersController(
         ICatalogService catalog,
         IOptions<StoreSettings> settings,
         ICartService cart,
         IOrderService orders,
-        IReturnService returns)
+        IReturnService returns,
+        IPostSaleService postSales)
         : base(catalog, settings, cart)
     {
         _orders = orders;
         _returns = returns;
+        _postSales = postSales;
     }
 
     /// <summary>The signed-in shopper, or null for a guest session.</summary>
@@ -72,6 +75,7 @@ public class OrdersController : StoreControllerBase
         if (order.UserId is not null && order.UserId == userId)
         {
             ViewData["Returns"] = await _returns.GetForOrderAsync(order.Id, ct);
+            ViewData["PostSales"] = await _postSales.GetForOrderAsync(order.Id, ct);
         }
 
         ViewData["Title"] = $"Order {order.OrderNumber}";

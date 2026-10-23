@@ -1,0 +1,79 @@
+@model Order?
+@{
+    var order = Model;
+    var orderNumber = ViewData["OrderNumber"] as string;
+}
+
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h1 class="h3 mb-1">Record a return to sender</h1>
+            <p class="text-muted mb-0">
+                Use this when the carrier cannot deliver and the parcel comes back. The goods are
+                refunded to the customer; the delivery effort is not.
+            </p>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index">Back to queue</a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header"><h2 class="h6 mb-0">Find the order</h2></div>
+                <div class="card-body">
+                    <form method="get" class="d-flex gap-2">
+                        <input name="orderNumber" class="form-control form-control-sm"
+                               placeholder="ORD-2026-0001" value="@orderNumber" />
+                        <button class="btn btn-primary btn-sm">Find</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            @if (order is not null)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="h6 mb-0">@order.OrderNumber · @order.CustomerName</h2>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted">
+                            @order.Email · @order.Lines.Sum(l => l.Quantity) item(s) ·
+                            @order.Shop?.Name
+                        </p>
+
+                        <form asp-action="Rts" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="orderId" value="@order.Id" />
+
+                            <div class="mb-2">
+                                <label class="form-label small" for="carrier">Carrier</label>
+                                <input id="carrier" name="carrier" class="form-control form-control-sm"
+                                       value="libanpost" required maxlength="40" />
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label small" for="attempts">Call attempts before RTS</label>
+                                <input id="attempts" name="callAttempts" type="number" min="0" max="20"
+                                       class="form-control form-control-sm" value="3" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small" for="note">Note</label>
+                                <textarea id="note" name="note" class="form-control form-control-sm"
+                                          rows="3" maxlength="1000"></textarea>
+                            </div>
+
+                            <button class="btn btn-warning btn-sm">Record return to sender</button>
+                        </form>
+                    </div>
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(orderNumber))
+            {
+                <div class="alert alert-warning py-2">No order matches “@orderNumber”.</div>
+            }
+        </div>
+    </div>
+</div>
