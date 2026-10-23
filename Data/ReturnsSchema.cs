@@ -116,6 +116,14 @@ public static class ReturnsSchema
                 FOREIGN KEY ([ReturnRequestId]) REFERENCES [dbo].[ReturnRequests] ([Id]) ON DELETE SET NULL;
         END
 
+        IF COL_LENGTH(N'[dbo].[VendorLedgerEntries]', N'PostSaleRequestId') IS NULL
+        BEGIN
+            ALTER TABLE [dbo].[VendorLedgerEntries] ADD [PostSaleRequestId] int NULL;
+            CREATE INDEX [IX_VendorLedgerEntries_PostSaleRequestId] ON [dbo].[VendorLedgerEntries] ([PostSaleRequestId]);
+            ALTER TABLE [dbo].[VendorLedgerEntries] ADD CONSTRAINT [FK_VendorLedgerEntries_PostSaleRequests_PostSaleRequestId]
+                FOREIGN KEY ([PostSaleRequestId]) REFERENCES [dbo].[PostSaleRequests] ([Id]) ON DELETE SET NULL;
+        END
+
         IF COL_LENGTH(N'[dbo].[Orders]', N'RefundedTotal') IS NULL
         BEGIN
             ALTER TABLE [dbo].[Orders] ADD [RefundedTotal] decimal(18,2) NOT NULL DEFAULT 0;
@@ -178,6 +186,8 @@ public static class ReturnsSchema
             await db.Database.ExecuteSqlRawAsync(SqliteDdl, ct);
             await CouponSchema.AddSqliteColumnIfMissingAsync(
                 db, "VendorLedgerEntries", "ReturnRequestId", "INTEGER NULL", ct);
+            await CouponSchema.AddSqliteColumnIfMissingAsync(
+                db, "VendorLedgerEntries", "PostSaleRequestId", "INTEGER NULL", ct);
             await CouponSchema.AddSqliteColumnIfMissingAsync(
                 db, "Orders", "RefundedTotal", "TEXT NOT NULL DEFAULT 0", ct);
             await CouponSchema.AddSqliteColumnIfMissingAsync(

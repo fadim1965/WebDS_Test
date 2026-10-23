@@ -240,3 +240,44 @@ Kwikby is a **logistics-intensive e-commerce platform** where the marketplace is
 **To become Kwikby**, WebDS_Test needs ~6–9 months of focused work on **fulfilment, shipper integration, post-sale processes, and international shipping** — the areas where LibanPost's operational reality differs from a generic marketplace.
 
 The six features already delivered (messaging, dual-currency, translations, moderation, per-category commission, 2FA) are **exactly the right marketplace foundations**; the next investment should shift to **logistics and fulfilment**.
+---
+
+## 10. Implementation Status (post-sale phase)
+
+This section records what has shipped since the analysis above; the tables in sections 1-7 remain
+the honest description of what was missing when the analysis was written.
+
+### Delivered
+
+- **One post-sale document, five processes.** `PostSaleRequest` covers cancellation, return,
+  exchange, RTS and warranty with a status timeline, a message thread, carrier attempts, warranty
+  assessment and pickup/warehouse timestamps.
+- **Fee rules encoded.** `PostSaleRules` maps Kwikby processes 1-7 to a `FeeAllocation` per fee
+  line (item price, shipping, credit card, pickup, return, replacement) and to who bears each.
+  The split is stored on the request, so a decision stays explainable.
+- **Local refund policy.** Changed-mind and wrong-option returns issue a single-use promo code for
+  the goods value instead of cash (`IsPromoCodeRefund`); the code is shown on the customer page.
+- **Customer intake.** Raise, follow, message and withdraw from the order page, with per-order
+  history (`/PostSale`).
+- **Admin desk.** Queue with status/type/search filters and counts, approve/reject, pickup and
+  receipt transitions, RTS recording, warranty triage (repairable/replaceable, fee split
+  recomputed for the chosen remedy) and remedy processing (cash refund capped at the order's
+  remaining total, promo code, replacement shipped, repair closed). Every action is audited.
+- **Seller fulfilment (packing process).** The seller confirms package count, nylon pockets and
+  invoice; the back office generates one label per package and records shipper pickup. Vendors see
+  their own queue; the confirmation form lives on the vendor order page.
+- **Schema.** Tables are created by an idempotent guard for SQL Server and SQLite, matching the
+  EF model (including the `Users.Id` length and the replacement-variant foreign key).
+- **Tests.** 8 rules tests for the fee matrix and 9 service tests for the lifecycle
+  (cancellation, return/promo code, exchange, warranty triage, RTS, fulfilment).
+
+### Still open (highest value first)
+
+| Gap | Why it matters | Suggested next step |
+|---|---|---|
+| Post-sale refunds do not reverse the vendor ledger | The vendor is still credited for goods the marketplace refunded | Add a `PostSaleRequestId` discriminator to `VendorLedgerEntries` and reverse in `PostSaleService.ProcessAsync`, mirroring `ReturnService.RefundAsync` |
+| Promo codes are not emailed | The customer must visit the request page to see the code | Queue a `post-sale.remedy` email from `ProcessAsync` through the existing outbox |
+| No payment-gateway refund in the post-sale path | Card refunds are recorded as rows but not sent back through the gateway | Route cash refunds through `IPaymentGateway.RefundAsync` the way returns do |
+| No seller 3 pm packing deadline / reminder email | Kwikby's daily cut-off drives the pickup schedule | Scheduled hosted service plus a reminder template |
+| No manifest, EPOD scans or quality-report document | RTS and shipper reconciliation still rely on manual notes | Carrier webhook plus `ManifestNumber`/`QualityReport` surfaced on the RTS page |
+| Warranty grace period is order-date based only | Kwikby measures from delivery | Store `DeliveredUtc` as the warranty start when present |

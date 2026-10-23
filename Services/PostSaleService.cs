@@ -190,11 +190,16 @@ public sealed class PostSaleService : IPostSaleService
 
     private readonly ApplicationDbContext _db;
     private readonly ILogger<PostSaleService> _logger;
+    private readonly IVendorLedgerService? _ledger;
 
-    public PostSaleService(ApplicationDbContext db, ILogger<PostSaleService> logger)
+    public PostSaleService(
+        ApplicationDbContext db,
+        ILogger<PostSaleService> logger,
+        IVendorLedgerService? ledger = null)
     {
         _db = db;
         _logger = logger;
+        _ledger = ledger;
     }
 
     // ------------------------------------------------------------------
@@ -668,6 +673,23 @@ public sealed class PostSaleService : IPostSaleService
                     CreatedUtc = now,
                     CompletedUtc = now
                 });
+
+                // Reverse the vendor's credit for the goods value that is being refunded.
+                // The fee split tells us who bears the item price; the seller's share is reversed.
+                var reversed = false;
+                if (_ledger is not null && request.FeeAllocation.ItemPriceBearer == FeeBearer.Seller)
+                {
+                    // Gross returned is the item price minus any discount the seller already absorbed.
+                    // Use the order line's LineTotal if available, otherwise the full refund amount.
+                    var grossReturned = request.OrderLine?.LineTotal ?? refund;
+                    reversed = await _ledger.RecordPartialReversalAsync(
+                        order,
+                        returnRequestId: null,
+                        postSaleRequestId: request.Id,
+                        grossReturned,
+                        $"Post-sale {request.Reference}: {refund:N2} refunded to the shopper.",
+                        ct);
+                }
 
                 order.RefundedTotal += refund;
             }

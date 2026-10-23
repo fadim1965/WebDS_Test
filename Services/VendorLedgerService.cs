@@ -41,7 +41,7 @@ public interface IVendorLedgerService
     /// take back more than the sale credited.
     /// </remarks>
     Task<bool> RecordPartialReversalAsync(
-        Order order, int returnRequestId, decimal grossReturned, string note, CancellationToken ct = default);
+        Order order, int? returnRequestId, int? postSaleRequestId, decimal grossReturned, string note, CancellationToken ct = default);
 }
 
 /// <inheritdoc />
@@ -263,9 +263,12 @@ public sealed class VendorLedgerService : IVendorLedgerService
     /// </para>
     /// </remarks>
     public async Task<bool> RecordPartialReversalAsync(
-        Order order, int returnRequestId, decimal grossReturned, string note, CancellationToken ct = default)
+        Order order, int? returnRequestId, int? postSaleRequestId, decimal grossReturned, string note, CancellationToken ct = default)
     {
-        if (order.ShopId <= 0 || returnRequestId <= 0 || grossReturned <= 0m)
+        var hasReturnId = returnRequestId.HasValue && returnRequestId.Value > 0;
+        var hasPostSaleId = postSaleRequestId.HasValue && postSaleRequestId.Value > 0;
+
+        if (order.ShopId <= 0 || (!hasReturnId && !hasPostSaleId) || grossReturned <= 0m)
         {
             return false;
         }
@@ -282,7 +285,7 @@ public sealed class VendorLedgerService : IVendorLedgerService
         var alreadyReversed = await _db.VendorLedgerEntries
             .AnyAsync(l => l.OrderId == order.Id
                          && l.Type == VendorLedgerEntryType.Reversal
-                         && l.ReturnRequestId == returnRequestId, ct);
+                         && (hasReturnId ? l.ReturnRequestId == returnRequestId : l.PostSaleRequestId == postSaleRequestId), ct);
 
         if (alreadyReversed)
         {
@@ -329,7 +332,8 @@ public sealed class VendorLedgerService : IVendorLedgerService
             ShopId = order.ShopId,
             OrderId = order.Id,
             Type = VendorLedgerEntryType.Reversal,
-            ReturnRequestId = returnRequestId,
+            ReturnRequestId = hasReturnId ? returnRequestId : null,
+            PostSaleRequestId = hasPostSaleId ? postSaleRequestId : null,
             GrossAmount = -grossReturned,
             CommissionAmount = -commission,
             NetAmount = -net,

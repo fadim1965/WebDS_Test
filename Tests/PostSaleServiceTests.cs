@@ -7,6 +7,13 @@ using Xunit;
 
 namespace WebDS_Test.Tests;
 
+/// <summary>Helper to create a vendor ledger service with the test logger.</summary>
+internal static class VendorLedgerTestSupport
+{
+    public static VendorLedgerService Ledger(ApplicationDbContext db) =>
+        new(db, NullLogger<VendorLedgerService>.Instance);
+}
+
 /// <summary>
 /// End-to-end tests for the post-sale service: the fee split is checked against the rules, and the
 /// lifecycle is checked by actually moving a request through it and reading the persisted state.
@@ -225,5 +232,108 @@ public class PostSaleServiceTests
 
         Assert.False(result.Success);
         Assert.Contains("not found", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PostSale_Refund_ReversesVendorLedgerCredit()
+    {
+        var db = TestSupport.NewDb();
+
+        var user = TestSupport.User();
+        db.Users.Add(user);
+
+        var order = TestSupport.Order(status: OrderStatus.Paid);
+        order.UserId = user.Id;
+        order.PaidUtc = DateTime.UtcNow.AddDays(-1);
+
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+
+        // Record the sale on the vendor ledger (10% commission on 49.00 = 4.90).
+        await VendorLedgerTestSupport.Ledger(db).RecordSaleAsync(order, "paid");
+
+        var sale = await db.VendorLedgerEntries.SingleAsync(e => e.Type == VendorLedgerEntryType.Sale);
+        Assert.Equal(49.00m, sale.GrossAmount);
+        Assert.Equal(4.90m, sale.CommissionAmount);
+
+        // Create a cancellation (seller bears the cost).
+        var service = new PostSaleService(
+            db,
+            NullLogger<PostSaleService>.Instance,
+            VendorLedgerTestSupport.Ledger(db));
+
+        var created = await service.CreateAsync(
+            order.Id, user.Id, PostSaleType.Cancellation, PostSaleReason.ChangedMind,
+            orderLineId: null, detail: "Ordered by mistake");
+
+        Assert.True(created.Success, created.Message);
+        Assert.Equal(FeeBearer.Seller, created.Request!.FeeAllocation.ItemPriceBearer);
+        Assert.Equal(53.50m, created.Request.RefundAmount);
+
+        // Approve and process the cancellation.
+        await service.DecideAsync(created.Request.Id, approve: true, "ok", "admin");
+        await service.ProcessAsync(created.Request.Id, "admin");
+
+        // The order should show the refund.
+        var reloaded = await db.Orders.AsNoTracking().FirstAsync(o => o.Id == order.Id);
+        Assert.Equal(53.50m, reloaded.RefundedTotal);
+
+        // The vendor ledger should have a reversal entry keyed to the post-sale request.
+        var reversal = await db.VendorLedgerEntries
+            .SingleAsync(e => e.Type == VendorLedgerEntryType.Reversal && e.PostSaleRequestId == created.Request.Id);
+
+        // Gross returned is the item price (49.00), commission reversed is 10% of that (4.90).
+        Assert.Equal(-49.00m, reversal.GrossAmount);
+        Assert.Equal(-4.90m, reversal.CommissionAmount);
+        Assert.Equal(-44.10m, reversal.NetAmount);
+        Assert.Equal(created.Request.Id, reversal.PostSaleRequestId);
+    }
+
+    [Fact]
+    public async Task PostSale_PromoCodeRefund_DoesNotReverseLedger()
+    {
+        var db = TestSupport.NewDb();
+
+        var user = TestSupport.User();
+        db.Users.Add(user);
+
+        var order = TestSupport.Order(status: OrderStatus.Paid);
+        order.UserId = user.Id;
+        order.PaidUtc = DateTime.UtcNow.AddDays(-1);
+
+        db.Orders.Add(order);
+        await db.SaveChangesAsync();
+
+        // Record the sale on the vendor ledger.
+        await VendorLedgerTestSupport.Ledger(db).RecordSaleAsync(order, "paid");
+
+        var service = new PostSaleService(
+            db,
+            NullLogger<PostSaleService>.Instance,
+            VendorLedgerTestSupport.Ledger(db));
+
+        var line = order.Lines.First();
+
+        // Changed-mind return: customer bears cost, promo code issued (no cash refund).
+        var created = await service.CreateAsync(
+            order.Id, user.Id, PostSaleType.Return, PostSaleReason.ChangedMind,
+            line.Id, "changed my mind");
+
+        Assert.True(created.Success);
+        Assert.True(created.Request!.IsPromoCodeRefund);
+        Assert.Equal(FeeBearer.Customer, created.Request.FeeAllocation.ItemPriceBearer);
+
+        await service.DecideAsync(created.Request.Id, true, null, "admin");
+        await service.TransitionAsync(created.Request.Id, PostSaleStatus.PickupScheduled, "admin");
+        await service.TransitionAsync(created.Request.Id, PostSaleStatus.PickedUp, "admin");
+        await service.TransitionAsync(created.Request.Id, PostSaleStatus.Received, "admin");
+        await service.ProcessAsync(created.Request.Id, "admin");
+
+        // No reversal on the ledger for a promo-code refund (customer bore the cost).
+        var reversals = await db.VendorLedgerEntries
+            .Where(e => e.Type == VendorLedgerEntryType.Reversal && e.PostSaleRequestId == created.Request.Id)
+            .ToListAsync();
+
+        Assert.Empty(reversals);
     }
 }

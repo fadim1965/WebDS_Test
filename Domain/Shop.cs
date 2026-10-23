@@ -303,6 +303,10 @@ public class VendorLedgerEntry
     public int? ReturnRequestId { get; set; }
     public ReturnRequest? ReturnRequest { get; set; }
 
+    /// <summary>The post-sale request that caused this reversal, if applicable.</summary>
+    public int? PostSaleRequestId { get; set; }
+    public PostSaleRequest? PostSaleRequest { get; set; }
+
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
 

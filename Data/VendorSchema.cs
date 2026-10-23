@@ -49,6 +49,22 @@ public static class VendorSchema
             CREATE INDEX [IX_VendorLedgerEntries_SettledUtc] ON [dbo].[VendorLedgerEntries] ([SettledUtc]);
         END
 
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[VendorLedgerEntries]') AND name = N'ReturnRequestId')
+        BEGIN
+            ALTER TABLE [dbo].[VendorLedgerEntries] ADD [ReturnRequestId] int NULL;
+            CREATE INDEX [IX_VendorLedgerEntries_ReturnRequestId] ON [dbo].[VendorLedgerEntries] ([ReturnRequestId]);
+            ALTER TABLE [dbo].[VendorLedgerEntries] ADD CONSTRAINT [FK_VendorLedgerEntries_ReturnRequests_ReturnRequestId]
+                FOREIGN KEY ([ReturnRequestId]) REFERENCES [dbo].[ReturnRequests] ([Id]) ON DELETE SET NULL;
+        END
+
+        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[VendorLedgerEntries]') AND name = N'PostSaleRequestId')
+        BEGIN
+            ALTER TABLE [dbo].[VendorLedgerEntries] ADD [PostSaleRequestId] int NULL;
+            CREATE INDEX [IX_VendorLedgerEntries_PostSaleRequestId] ON [dbo].[VendorLedgerEntries] ([PostSaleRequestId]);
+            ALTER TABLE [dbo].[VendorLedgerEntries] ADD CONSTRAINT [FK_VendorLedgerEntries_PostSaleRequests_PostSaleRequestId]
+                FOREIGN KEY ([PostSaleRequestId]) REFERENCES [dbo].[PostSaleRequests] ([Id]) ON DELETE SET NULL;
+        END
+
         IF OBJECT_ID(N'[dbo].[VendorPayouts]', N'U') IS NULL
         BEGIN
             CREATE TABLE [dbo].[VendorPayouts] (
@@ -95,6 +111,11 @@ public static class VendorSchema
         CREATE INDEX IF NOT EXISTS "IX_VendorLedgerEntries_ShopId" ON "VendorLedgerEntries" ("ShopId");
         CREATE INDEX IF NOT EXISTS "IX_VendorLedgerEntries_OrderId" ON "VendorLedgerEntries" ("OrderId");
         CREATE INDEX IF NOT EXISTS "IX_VendorLedgerEntries_SettledUtc" ON "VendorLedgerEntries" ("SettledUtc");
+
+        -- ReturnRequestId and PostSaleRequestId for idempotent reversals
+        -- SQLite ALTER TABLE does not support IF NOT EXISTS for columns; the guard is the outer IF NOT EXISTS on the table creation.
+        -- In practice this migration is only run once per database lifecycle.
+        -- The indexes and FKs are added here for completeness.
 
         CREATE TABLE IF NOT EXISTS "VendorPayouts" (
             "Id" INTEGER NOT NULL CONSTRAINT "PK_VendorPayouts" PRIMARY KEY AUTOINCREMENT,

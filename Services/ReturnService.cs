@@ -155,7 +155,8 @@ public sealed class ReturnService : IReturnService
                 $"An order that is '{order.Status.ToDisplay()}' cannot be returned. Returns open once it is paid.");
         }
 
-        if (await _db.ReturnRequests.AnyAsync(r => r.OrderId == orderId && OpenStatuses.Contains(r.Status), ct))
+        if (await _db.ReturnRequests.AnyAsync(
+                r => r.OrderId == orderId && EF.Constant(OpenStatuses).Contains(r.Status), ct))
         {
             return ReturnResult.Fail("This order already has an open return request.");
         }
@@ -290,7 +291,7 @@ public sealed class ReturnService : IReturnService
 
         if (openOnly == true)
         {
-            query = query.Where(r => OpenStatuses.Contains(r.Status));
+            query = query.Where(r => EF.Constant(OpenStatuses).Contains(r.Status));
         }
 
         return await query
@@ -566,7 +567,7 @@ public sealed class ReturnService : IReturnService
         if (_ledger is not null)
         {
             reversed = await _ledger.RecordPartialReversalAsync(
-                order, request.Id, goodsAfterDiscount,
+                order, request.Id, postSaleRequestId: null, goodsAfterDiscount,
                 $"Return {request.Reference}: {refundAmount:N2} refunded to the shopper.", ct);
         }
 
