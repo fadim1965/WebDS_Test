@@ -281,3 +281,60 @@ the honest description of what was missing when the analysis was written.
 | No seller 3 pm packing deadline / reminder email | Kwikby's daily cut-off drives the pickup schedule | Scheduled hosted service plus a reminder template |
 | No manifest, EPOD scans or quality-report document | RTS and shipper reconciliation still rely on manual notes | Carrier webhook plus `ManifestNumber`/`QualityReport` surfaced on the RTS page |
 | Warranty grace period is order-date based only | Kwikby measures from delivery | Store `DeliveredUtc` as the warranty start when present |
+
+---
+
+## 11. Verification of the external gap checklist (2026-10-26)
+
+An external reviewer supplied eleven "potential gaps". They were checked one by one against the
+working tree — model, services, controllers, views and configuration — before any fix was assigned.
+Three labels are used:
+
+- **Confirmed** — the code shows the gap, and a shipped path can reach it.
+- **Latent** — the gap is real in the model or a controller, but no shipped feature can exercise it yet.
+- **Blocked** — the code path is complete and tested; only a third party (credentials, contract) is missing.
+
+| # | Checklist item | Verdict | Evidence in the current tree | Priority |
+|---|---|---|---|---|
+| 1 | Mixed-shop cart / multi-vendor checkout | **Confirmed, structural** | `Cart.ShopId` derives one shop from `Items`; `CartService.AddAsync` refuses a second shop with a clear message; `OrderService.PlaceOrderAsync` already groups by `ShopId` and suffixes the idempotency key per order, but `CheckoutController.Place` persists and redirects to `result.Order` only, so later orders are invisible to a guest; the coupon is validated against the whole cart yet applied only when `shopIndex == 0` | P1 |
+| 2 | Line-level / partial shipment | **Confirmed** | `OrderShipment` carries `OrderId` and `ShopId`, not an order line or quantity; `FulfilmentService.DispatchAsync` is order-wide; `ShipmentStatus` and `OrderStatus` have no partial state; `SellerFulfilment.PackageCount` counts labels, not dispatched lines. Returns and post-sale, by contrast, *are* line-scoped (`ReturnRequestLine.OrderLineId`, `PostSaleRequest.OrderLineId`) | P2 |
+| 3 | Verified LibanPost carrier integration | **Blocked** | `LibanPostCarrier` implements create/track/cancel/label/COD against an **assumed** contract (its own XML comment says so); `Shipping:Provider` is `simulator` and no credentials are configured. The adapter and the simulator are interchangeable behind `IShippingCarrier` | P0 for go-live |
+| 4 | Real payment provider | **Blocked** | Only `SandboxPaymentGateway` and `SimulatorPaymentGateway` exist; signature verification, idempotent event log, capture and `RefundAsync` are complete and tested. Choice of processor and credentials are outstanding | P0 for go-live |
+| 5 | Carrier COD remittance reconciliation | **Confirmed** | Cash is tracked per order (`CodAmount`, `CollectionStatus`), and the vendor ledger is credited on delivery for COD and on payment for prepaid. There is no remittance, deposit-batch or carrier-statement entity, so a carrier shortfall cannot be matched to orders | P1 |
+| 6 | Vendor role enforcement | **Confirmed, latent** | `ShopAccess` exposes `CanManageCatalogue`, `CanManageSettings`, `CanFulfilOrders`; checks exist only in `Products`, `Appearance` and `Dashboard`. `Orders`, `Returns`, `PostSale`, `Messages`, `Payouts`, `Reports` and `Reviews` resolve the shop with `GetPrimaryShopForUserAsync` and never test the role, and `Payouts.SaveBank` has no owner check. However `IShopService.AddUserAsync`/`RemoveUserAsync` have **no caller** and no team screen exists, so a non-owner membership cannot currently be created through the application | P1 |
+| 7 | Notifications: low stock, SMS, WhatsApp | **Confirmed** | The outbox is email-only (`EmailMessage`, `EmailKind`); kinds cover order, return, payout, post-sale remedy and verification. No low-stock or back-in-stock kind, and no SMS/WhatsApp transport | P2 |
+| 8 | Support desk: priority, assignment, SLA, disputes | **Confirmed** | `Conversation` has per-side read markers, `LastAuthor`, a preview and an optional order link; there is no priority, assignee, SLA clock or escalation state | P2 |
+| 9 | Reports: profitability, fulfilment SLA, retention | **Confirmed** | 15 admin and 10 vendor report keys (sales, products, categories, shops, orders, customers, returns, payouts, commission, ledger, statement, inventory, stock movements, coupons, tax, reviews). None ranks vendor profitability or measures dispatch/delivery SLA or repeat purchase | P2 |
+| 10 | Product comparison / recently viewed | **Confirmed** | Catalogue has facets, sorts, related products and reviews; there is no comparison list and no recently-viewed history | P3 |
+| 11 | Outbound API keys / webhooks / ERP | **Confirmed** | Inbound integrations exist (CSV product import, Shopify catalogue client, CSV/PDF export). No API-key model, no outbound event webhook, no ERP connector | P2 |
+
+### Findings the checklist missed
+
+- **The consolidation requirement contradicts the order model.** The Excel sheet asks for
+  *multi-supplier to single shipment* consolidation; the platform deliberately writes **one order and
+  one shipment per shop**. Enabling a mixed cart without deciding this point would produce several
+  consignments for one basket — the opposite of the requirement.
+- **No team management surface.** Role checks can be added cheaply, but until `AddUserAsync` is
+  reachable (vendor "Team" screen or admin shop detail) the three roles are schema-only.
+- **Guest confirmation is single-order.** Even after the cart allows several shops, a guest will be
+  able to open only the first order unless `Place` records every id in the viewable-orders session key.
+- **Coupon scope vs. split orders.** `ValidateAndComputeAsync` prices the discount across the whole
+  cart, while only the first shop's order stores it; on a mixed cart this silently over-discounts
+  shop 0 and ignores the rest.
+- **Back-in-stock alerts** are absent as a customer-facing feature, distinct from the vendor's
+  low-stock threshold.
+
+### Recommended order of work
+
+1. **Vendor authorization + team surface** (P1, small): apply `ShopAccess` to every vendor action,
+   make `SaveBank` owner-only, and add the screen that creates the roles being enforced.
+2. **COD remittance** (P1, medium): a deposit/remittance document that groups collected shipments,
+   records the carrier's actual transfer and surfaces the variance, mirrored by a vendor-ledger
+   adjustment when the carrier underpays.
+3. **Multi-shop checkout** (P1, medium): only after the consolidation question above is answered —
+   lift the cart restriction, apply coupons per shop or as a marketplace-funded discount, and show
+   every order on confirmation and in history.
+4. **Live carrier and payments** (P0, blocked): obtain the LibanPost interface specification and
+   credentials plus the chosen payment processor's keys; the adapters are ready for them.
+5. **Notifications, support SLA, reports, discovery, outbound integration** (P2/P3): each is additive
+   and can ship independently.
