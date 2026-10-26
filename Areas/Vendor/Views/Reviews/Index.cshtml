@@ -5,6 +5,7 @@
     ViewData["Title"] = "Reviews";
     var settings = ReviewOptions.Value;
     var badge = Model.Rating.Badge(settings);
+    var canManageReviews = (bool?)ViewData["CanManageReviews"] ?? true;
 }
 
 <div class="container py-4">
@@ -153,34 +154,37 @@
                                 </div>
                             }
 
-                            <details class="mt-2" open="@review.HasVendorReply">
-                                <summary class="small text-primary" style="cursor:pointer">
-                                    @(review.HasVendorReply ? "Edit your reply" : "Reply to this review")
-                                </summary>
-                                <form method="post" asp-area="Vendor" asp-controller="Reviews" asp-action="Reply" class="mt-2">
-                                    <input type="hidden" name="reviewId" value="@review.Id" />
-                                    <input type="hidden" name="stars" value="@Model.Stars" />
-                                    <input type="hidden" name="sort" value="@Model.Sort" />
-                                    <input type="hidden" name="page" value="@Model.Reviews.Page" />
-                                    <textarea class="form-control form-control-sm" name="reply" rows="3" maxlength="2000"
-                                              placeholder="Answer publicly. Thank the customer, explain what you changed, or offer a fix.">@review.VendorReply</textarea>
-                                    <button class="btn btn-sm btn-primary mt-2" type="submit">
-                                        @(review.HasVendorReply ? "Update reply" : "Post reply")
-                                    </button>
-                                </form>
-
-                                @if (review.HasVendorReply)
-                                {
-                                    <form method="post" asp-area="Vendor" asp-controller="Reviews" asp-action="Reply" class="mt-1">
+                            @if (canManageReviews)
+                            {
+                                <details class="mt-2" open="@review.HasVendorReply">
+                                    <summary class="small text-primary" style="cursor:pointer">
+                                        @(review.HasVendorReply ? "Edit your reply" : "Reply to this review")
+                                    </summary>
+                                    <form method="post" asp-area="Vendor" asp-controller="Reviews" asp-action="Reply" class="mt-2">
                                         <input type="hidden" name="reviewId" value="@review.Id" />
-                                        <input type="hidden" name="reply" value="" />
                                         <input type="hidden" name="stars" value="@Model.Stars" />
                                         <input type="hidden" name="sort" value="@Model.Sort" />
                                         <input type="hidden" name="page" value="@Model.Reviews.Page" />
-                                        <button class="btn btn-link btn-sm text-danger p-0" type="submit">Remove reply</button>
+                                        <textarea class="form-control form-control-sm" name="reply" rows="3" maxlength="2000"
+                                                  placeholder="Answer publicly. Thank the customer, explain what you changed, or offer a fix.">@review.VendorReply</textarea>
+                                        <button class="btn btn-sm btn-primary mt-2" type="submit">
+                                            @(review.HasVendorReply ? "Update reply" : "Post reply")
+                                        </button>
                                     </form>
-                                }
-                            </details>
+
+                                    @if (review.HasVendorReply)
+                                    {
+                                        <form method="post" asp-area="Vendor" asp-controller="Reviews" asp-action="Reply" class="mt-1">
+                                            <input type="hidden" name="reviewId" value="@review.Id" />
+                                            <input type="hidden" name="reply" value="" />
+                                            <input type="hidden" name="stars" value="@Model.Stars" />
+                                            <input type="hidden" name="sort" value="@Model.Sort" />
+                                            <input type="hidden" name="page" value="@Model.Reviews.Page" />
+                                            <button class="btn btn-link btn-sm text-danger p-0" type="submit">Remove reply</button>
+                                        </form>
+                                    }
+                                </details>
+                            }
                         </div>
                     </article>
                 }

@@ -2,6 +2,7 @@
 @{
     var conversation = Model.Conversation;
     var order = conversation.Order;
+    var canManage = (bool?)ViewData["CanManageConversation"] ?? true;
     ViewData["Title"] = $"Message {conversation.Reference}";
 }
 
@@ -29,7 +30,7 @@
                 }
             </p>
         </div>
-        @if (conversation.IsOpen)
+        @if (conversation.IsOpen && canManage)
         {
             <form asp-action="Close" asp-route-id="@conversation.Id" method="post">
                 <button type="submit" class="btn btn-outline-secondary btn-sm"
@@ -61,7 +62,13 @@
         }
     </div>
 
-    @if (Model.CanReply)
+    @if (Model.CanReply && !canManage)
+    {
+        <div class="alert alert-light border mt-3 mb-0">
+            A manager or the owner answers shoppers. You can still read the thread.
+        </div>
+    }
+    else if (Model.CanReply)
     {
         <div class="card mt-3">
             <div class="card-header bg-white fw-semibold">Reply to the shopper</div>

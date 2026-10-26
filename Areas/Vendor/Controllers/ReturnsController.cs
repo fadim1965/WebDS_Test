@@ -50,6 +50,16 @@ public class ReturnsController : Controller
         return await _shops.GetPrimaryShopForUserAsync(userId, ct);
     }
 
+    /// <summary>
+    /// The caller's role in this shop. Membership alone is enough to read the queue; the decisions
+    /// below additionally require <see cref="ShopAccessPolicy.CanDecideAfterSales"/>.
+    /// </summary>
+    private async Task<ShopAccess?> ResolveAccessAsync(Shop shop, CancellationToken ct)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return userId is null ? null : await _shops.ResolveAccessAsync(userId, shop.Id, ct);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Index(bool? open, CancellationToken ct)
     {
@@ -79,6 +89,7 @@ public class ReturnsController : Controller
         ViewData["Title"] = $"Return {request.Reference}";
         ViewData["ShopName"] = shop.Name;
         ViewData["Currency"] = _settings.CurrencySymbol;
+        ViewData["CanDecide"] = (await ResolveAccessAsync(shop, ct))?.CanDecideAfterSales() == true;
         return View(request);
     }
 
@@ -89,6 +100,8 @@ public class ReturnsController : Controller
     {
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
+
+        if ((await ResolveAccessAsync(shop, ct))?.CanDecideAfterSales() != true) return Forbid();
 
         var request = await _returns.GetAsync(id, ct);
         if (request is null || request.ShopId != shop.Id) return NotFound();
@@ -116,6 +129,8 @@ public class ReturnsController : Controller
     {
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
+
+        if ((await ResolveAccessAsync(shop, ct))?.CanDecideAfterSales() != true) return Forbid();
 
         var request = await _returns.GetAsync(id, ct);
         if (request is null || request.ShopId != shop.Id) return NotFound();

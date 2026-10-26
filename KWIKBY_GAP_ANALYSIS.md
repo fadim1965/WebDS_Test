@@ -338,3 +338,36 @@ Three labels are used:
    credentials plus the chosen payment processor's keys; the adapters are ready for them.
 5. **Notifications, support SLA, reports, discovery, outbound integration** (P2/P3): each is additive
    and can ship independently.
+
+---
+
+## 12. Vendor authorization and the team surface (delivered 2026-10-26)
+
+Checklist item 6 is now closed for every shipped vendor path.
+
+- **One policy, one answer.** `Services/ShopAccessPolicy.cs` adds the role decisions the after-sales
+  and money screens need (`CanDecideAfterSales`, `CanViewFinancials`, `CanManagePayoutDetails`,
+  `CanManageTeam`, `CanRespondToCustomers`) next to the existing catalogue/settings/fulfilment flags.
+- **Enforced at the action.** Dispatch and tracking refresh require `CanFulfilOrders`; return
+  decisions and receipt require `CanDecideAfterSales`; packing confirmation requires
+  `CanFulfilOrders`; product create/edit/submit/unpublish/delete/restore require
+  `CanManageCatalogue`; replies and closures require `CanRespondToCustomers`; payout pages require
+  `CanViewFinancials`; `SaveBank` requires `CanManagePayoutDetails`.
+- **The missing surface.** `Vendor > Team` (also linked from Appearance and Payouts) lists members,
+  adds an existing account as Manager or Fulfilment, removes non-owners and audits every change.
+  Ownership cannot be granted or removed there.
+- **The views follow the policy.** The bank form becomes read-only for a manager, and the return,
+  message and review actions are hidden when the role cannot use them, so a refusal is rare in
+  normal use.
+- **Tests.** 14 new cases in `Tests/VendorRoleTests.cs`: the full policy matrix, the bank gate, the
+  return-decision gate, the owner-only team screen, and the invite/remove rules (existing account,
+  no second owner, owner cannot be removed).
+
+Deliberately left open:
+
+| Item | Why |
+|---|---|
+| Dashboard and vendor reports still show financial KPIs to fulfilment staff | Both files are part of the in-flight reporting work; `CanViewFinancials` is ready to gate them |
+| Product rows render edit controls for fulfilment staff | The actions return 403; hiding the controls is cosmetic |
+| Team invitations require an existing account | There is no invitation token or email; the owner must know the colleague's registered address |
+| Ownership transfer | A marketplace decision, not a shop one; no endpoint exists at any level |

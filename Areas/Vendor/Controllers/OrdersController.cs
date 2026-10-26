@@ -122,6 +122,8 @@ public class OrdersController : Controller
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
 
+        if ((await ResolveAccessAsync(shop, ct))?.CanFulfilOrders != true) return Forbid();
+
         var result = await _fulfilment.DispatchAsync(id, shop.Id, _carriers.Default.Key, ct: ct);
         Flash(result.Message, result.Success);
         return RedirectToAction(nameof(Details), new { id });
@@ -138,6 +140,8 @@ public class OrdersController : Controller
     {
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
+
+        if ((await ResolveAccessAsync(shop, ct))?.CanFulfilOrders != true) return Forbid();
 
         var shipments = await _fulfilment.GetShipmentsForShopAsync(shop.Id, false, ct);
         var shipment = shipments.FirstOrDefault(s => s.OrderId == id && s.IsOpen);
@@ -158,5 +162,15 @@ public class OrdersController : Controller
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (userId is null) return null;
         return await _shops.GetPrimaryShopForUserAsync(userId, ct);
+    }
+
+    /// <summary>
+    /// The caller's role in this shop. Reading the order book is open to every member; dispatching
+    /// and refreshing tracking require <see cref="ShopAccess.CanFulfilOrders"/>.
+    /// </summary>
+    private async Task<ShopAccess?> ResolveAccessAsync(Shop shop, CancellationToken ct)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return userId is null ? null : await _shops.ResolveAccessAsync(userId, shop.Id, ct);
     }
 }

@@ -37,8 +37,17 @@ public class PayoutsController : Controller
             return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
         }
 
+        // Payouts, the ledger and the bank destination are financial data. Fulfilment staff operate
+        // the packing bench, not the shop's money.
+        var access = await _shops.ResolveAccessAsync(userId, shop.Id, ct);
+        if (access?.CanViewFinancials() != true)
+        {
+            return Forbid();
+        }
+
         ViewData["Title"] = "Payouts";
         ViewData["Shop"] = shop;
+        ViewData["CanEditBank"] = access.CanManagePayoutDetails();
 
         return View(new VendorPayoutViewModel
         {
@@ -68,6 +77,13 @@ public class PayoutsController : Controller
         if (shop is null)
         {
             return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
+        }
+
+        // Redirecting a shop's settlements is the owner's decision alone.
+        var access = await _shops.ResolveAccessAsync(userId, shop.Id, ct);
+        if (access?.CanManagePayoutDetails() != true)
+        {
+            return Forbid();
         }
 
         var result = await _shops.UpdateSettingsAsync(shop.Id, s =>
@@ -101,6 +117,12 @@ public class PayoutsController : Controller
         if (shop is null)
         {
             return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
+        }
+
+        var access = await _shops.ResolveAccessAsync(userId, shop.Id, ct);
+        if (access?.CanViewFinancials() != true)
+        {
+            return Forbid();
         }
 
         var payout = await _payouts.GetPayoutAsync(id, ct);

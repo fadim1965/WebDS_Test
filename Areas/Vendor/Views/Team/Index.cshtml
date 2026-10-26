@@ -1,0 +1,117 @@
+@model WebDS_Test.Areas.Vendor.Models.TeamIndexViewModel
+@{
+    ViewData["Title"] = "Team";
+    var shop = Model.Shop;
+}
+
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h3 mb-1">Team</h1>
+            <p class="text-muted mb-0">
+                Who can operate <strong>@shop.Name</strong>, and what each role may do.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+            <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Appearance" asp-action="Index">Appearance</a>
+        </div>
+    </div>
+
+    <div class="alert alert-light border mt-3 mb-0">
+        <div class="fw-semibold mb-1">Roles</div>
+        <div class="row g-2 small">
+            <div class="col-md-4">
+                <span class="badge text-bg-dark">Owner</span>
+                Everything: catalogue, orders, after-sales, payouts, bank details and this page.
+            </div>
+            <div class="col-md-4">
+                <span class="badge text-bg-primary">Manager</span>
+                Day-to-day trading: catalogue, packing and dispatch, after-sales decisions,
+                customer replies and financial reports. Cannot change the bank destination or the team.
+            </div>
+            <div class="col-md-4">
+                <span class="badge text-bg-secondary">Fulfilment</span>
+                Packing, labels, dispatch and tracking, plus reading the order and after-sales queues.
+                Cannot change prices, refunds, payouts or the team.
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header bg-white fw-semibold">People with access</div>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Granted</th>
+                        <th>Terms</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var member in Model.Members)
+                {
+                    <tr>
+                        <td class="fw-semibold">@member.DisplayName</td>
+                        <td>@member.Email</td>
+                        <td>
+                            <span class="badge @(member.Role == WebDS_Test.Domain.ShopRole.Owner ? "text-bg-dark" : member.Role == WebDS_Test.Domain.ShopRole.Manager ? "text-bg-primary" : "text-bg-secondary")">
+                                @member.RoleLabel
+                            </span>
+                        </td>
+                        <td class="text-muted small">@member.GrantedUtc.ToString("yyyy-MM-dd")</td>
+                        <td class="text-muted small">
+                            @(member.AcceptedTermsUtc is { } accepted ? accepted.ToString("yyyy-MM-dd") : "—")
+                        </td>
+                        <td class="text-end">
+                            @if (!member.IsOwner)
+                            {
+                                <form asp-action="Remove" method="post" class="d-inline"
+                                      onsubmit="return confirm('Remove this person from the shop?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@member.UserId" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Remove</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header bg-white fw-semibold">Add a colleague</div>
+        <div class="card-body">
+            <p class="text-muted small">
+                The person must already have a customer account with this email address. Adding them
+                changes nothing about their account; it gives that account a role in this shop.
+            </p>
+            <form asp-action="Invite" method="post" class="row g-2 align-items-end">
+                @Html.AntiForgeryToken()
+                <div class="col-md-6">
+                    <label class="form-label small mb-1" for="inviteEmail">Email address</label>
+                    <input id="inviteEmail" name="email" type="email" class="form-control form-control-sm"
+                           placeholder="colleague@example.com" maxlength="256" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1" for="inviteRole">Role</label>
+                    <select id="inviteRole" name="role" class="form-select form-select-sm">
+                        @foreach (var role in Model.InvitableRoles)
+                        {
+                            <option value="@role">@role</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">Add to shop</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

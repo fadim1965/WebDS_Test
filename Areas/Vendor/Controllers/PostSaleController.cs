@@ -34,6 +34,16 @@ public class PostSaleController : Controller
         return userId is null ? null : await _shops.GetPrimaryShopForUserAsync(userId, ct);
     }
 
+    /// <summary>
+    /// The caller's role in this shop. Messages are open to every member; confirming what was packed
+    /// is the fulfilment bench's job.
+    /// </summary>
+    private async Task<ShopAccess?> ResolveAccessAsync(Shop shop, CancellationToken ct)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return userId is null ? null : await _shops.ResolveAccessAsync(userId, shop.Id, ct);
+    }
+
     private void Flash(string message, bool success = true)
     {
         TempData["Message"] = message;
@@ -115,6 +125,8 @@ public class PostSaleController : Controller
     {
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
+
+        if ((await ResolveAccessAsync(shop, ct))?.CanFulfilOrders != true) return Forbid();
 
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "vendor";
         var result = await _postSales.ConfirmSellerFulfilmentAsync(

@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Payouts";
     var outstanding = Model.Outstanding;
+    var canEditBank = (bool?)ViewData["CanEditBank"] ?? false;
 }
 <div class="container py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
@@ -13,6 +14,10 @@
         <div class="d-flex gap-2">
             <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
             <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Products" asp-action="Index">Products</a>
+            @if (canEditBank)
+            {
+                <a class="btn btn-outline-primary btn-sm" asp-area="Vendor" asp-controller="Team" asp-action="Index">Team</a>
+            }
         </div>
     </div>
 
@@ -42,27 +47,44 @@
                 Where the marketplace sends your settlements. Recorded with every payout's statement,
                 so the trail shows both the destination and the amounts.
             </p>
-            <form asp-action="SaveBank" method="post" class="row g-2 align-items-end">
-                @Html.AntiForgeryToken()
-                <div class="col-md-4">
-                    <label class="form-label small mb-1" for="bankAccountName">Account name</label>
-                    <input id="bankAccountName" name="bankAccountName" class="form-control form-control-sm"
-                           value="@Model.Shop.BankAccountName" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small mb-1" for="bankName">Bank name</label>
-                    <input id="bankName" name="bankName" class="form-control form-control-sm"
-                           value="@Model.Shop.BankName" />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small mb-1" for="bankIban">IBAN</label>
-                    <input id="bankIban" name="bankIban" class="form-control form-control-sm"
-                           value="@Model.Shop.BankIban" />
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-sm btn-outline-primary w-100">Save payout details</button>
-                </div>
-            </form>
+            @if (canEditBank)
+            {
+                <form asp-action="SaveBank" method="post" class="row g-2 align-items-end">
+                    @Html.AntiForgeryToken()
+                    <div class="col-md-4">
+                        <label class="form-label small mb-1" for="bankAccountName">Account name</label>
+                        <input id="bankAccountName" name="bankAccountName" class="form-control form-control-sm"
+                               value="@Model.Shop.BankAccountName" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small mb-1" for="bankName">Bank name</label>
+                        <input id="bankName" name="bankName" class="form-control form-control-sm"
+                               value="@Model.Shop.BankName" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small mb-1" for="bankIban">IBAN</label>
+                        <input id="bankIban" name="bankIban" class="form-control form-control-sm"
+                               value="@Model.Shop.BankIban" />
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">Save payout details</button>
+                    </div>
+                </form>
+            }
+            else
+            {
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-3">Account name</dt>
+                    <dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Shop.BankAccountName) ? "—" : Model.Shop.BankAccountName)</dd>
+                    <dt class="col-sm-3">Bank name</dt>
+                    <dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Shop.BankName) ? "—" : Model.Shop.BankName)</dd>
+                    <dt class="col-sm-3">IBAN</dt>
+                    <dd class="col-sm-9">@(string.IsNullOrWhiteSpace(Model.Shop.BankIban) ? "—" : Model.Shop.BankIban)</dd>
+                </dl>
+                <p class="text-muted small mb-0 mt-2">
+                    Only the shop owner can change where settlements are paid.
+                </p>
+            }
         </div>
     </div>
 

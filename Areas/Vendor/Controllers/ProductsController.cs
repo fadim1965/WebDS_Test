@@ -130,6 +130,8 @@ public class ProductsController : Controller
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
 
+        if ((await ResolveAccessAsync(shop, ct))?.CanManageCatalogue != true) return Forbid();
+
         var model = new ProductEditViewModel
         {
             Categories = await Db.Categories.AsNoTracking().Where(c => c.IsGlobal || c.ShopId == shop.Id).OrderBy(c => c.Name).ToListAsync(ct),
@@ -516,6 +518,8 @@ public class ProductsController : Controller
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
 
+        if ((await ResolveAccessAsync(shop, ct))?.CanManageCatalogue != true) return Forbid();
+
         var result = await _moderation.SubmitAsync(id, shop.Id, ct);
         Flash(result.Message, result.Success);
 
@@ -536,6 +540,8 @@ public class ProductsController : Controller
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
 
+        if ((await ResolveAccessAsync(shop, ct))?.CanManageCatalogue != true) return Forbid();
+
         var result = await _moderation.UnpublishAsync(id, shop.Id, ct);
         Flash(result.Message, result.Success);
 
@@ -555,6 +561,9 @@ public class ProductsController : Controller
     {
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
+
+        if ((await ResolveAccessAsync(shop, ct))?.CanManageCatalogue != true) return Forbid();
+
         var product = await Db.Products.FirstOrDefaultAsync(p => p.Id == id && p.ShopId == shop.Id, ct);
         if (product is null)
         {
@@ -577,6 +586,9 @@ public class ProductsController : Controller
     {
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
+
+        if ((await ResolveAccessAsync(shop, ct))?.CanManageCatalogue != true) return Forbid();
+
         var product = await Db.Products.FirstOrDefaultAsync(p => p.Id == id && p.ShopId == shop.Id, ct);
         if (product is null)
         {
@@ -598,6 +610,16 @@ public class ProductsController : Controller
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (userId is null) return null;
         return await _shops.GetPrimaryShopForUserAsync(userId, ct);
+    }
+
+    /// <summary>
+    /// The caller's role in this shop. Catalogue reads are open to every member; anything that
+    /// changes a listing requires <see cref="ShopAccess.CanManageCatalogue"/>.
+    /// </summary>
+    private async Task<ShopAccess?> ResolveAccessAsync(Shop shop, CancellationToken ct)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return userId is null ? null : await _shops.ResolveAccessAsync(userId, shop.Id, ct);
     }
 
     /// <summary>Derives a slug from the name when none is supplied, and keeps it unique.</summary>

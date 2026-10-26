@@ -2,6 +2,7 @@
 @{
     var currency = (string)(ViewData["Currency"] ?? "$");
     var order = Model.Order;
+    var canDecide = (bool?)ViewData["CanDecide"] ?? true;
 
     string Money(decimal value) => currency + value.ToString("N2");
 }
@@ -79,7 +80,14 @@
             <div class="card h-100">
                 <div class="card-header bg-white fw-semibold">Actions</div>
                 <div class="card-body">
-                    @if (Model.Status == ReturnStatus.Requested)
+                    @if (!canDecide && Model.Status is ReturnStatus.Requested or ReturnStatus.Approved)
+                    {
+                        <p class="small text-muted mb-0">
+                            A manager or the owner has to approve and receive returns. You can still
+                            read the request and its history.
+                        </p>
+                    }
+                    else if (Model.Status == ReturnStatus.Requested)
                     {
                         <form asp-action="Decide" asp-route-id="@Model.Id" method="post" class="mb-2">
                             <input type="hidden" name="approve" value="true" />

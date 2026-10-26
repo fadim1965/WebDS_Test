@@ -37,6 +37,7 @@ public class ReviewsController : Controller
         }
 
         ViewData["Title"] = "Reviews";
+        ViewData["CanManageReviews"] = (await ResolveAccessAsync(shop, ct))?.CanRespondToCustomers() == true;
 
         return View(new VendorReviewListViewModel
         {
@@ -71,6 +72,11 @@ public class ReviewsController : Controller
             return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
         }
 
+        if ((await ResolveAccessAsync(shop, ct))?.CanRespondToCustomers() != true)
+        {
+            return Forbid();
+        }
+
         var result = await _reviews.ReplyAsync(reviewId, shop.Id, reply, ct);
         Flash(result.Message, result.Success);
 
@@ -81,6 +87,16 @@ public class ReviewsController : Controller
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         return userId is null ? null : await _shops.GetPrimaryShopForUserAsync(userId, ct);
+    }
+
+    /// <summary>
+    /// The caller's role in this shop. Every member may read reviews; only an owner or manager may
+    /// answer one in public.
+    /// </summary>
+    private async Task<ShopAccess?> ResolveAccessAsync(Shop shop, CancellationToken ct)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return userId is null ? null : await _shops.ResolveAccessAsync(userId, shop.Id, ct);
     }
 
     private void Flash(string message, bool success = true)

@@ -47,6 +47,16 @@ public class MessagesController : Controller
         return await _shops.GetPrimaryShopForUserAsync(userId, ct);
     }
 
+    /// <summary>
+    /// The caller's role in this shop. Any member may read the inbox; replying and closing are
+    /// limited to the people allowed to speak for the shop.
+    /// </summary>
+    private async Task<ShopAccess?> ResolveAccessAsync(Shop shop, CancellationToken ct)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        return userId is null ? null : await _shops.ResolveAccessAsync(userId, shop.Id, ct);
+    }
+
     /// <summary>The shop's threads, newest activity first.</summary>
     [HttpGet]
     public async Task<IActionResult> Index(bool? open, CancellationToken ct)
@@ -79,6 +89,7 @@ public class MessagesController : Controller
 
         ViewData["Title"] = $"Message {conversation.Reference}";
         ViewData["ShopName"] = shop.Name;
+        ViewData["CanManageConversation"] = (await ResolveAccessAsync(shop, ct))?.CanRespondToCustomers() == true;
         return View(new ConversationThreadViewModel
         {
             Conversation = conversation,
@@ -94,6 +105,8 @@ public class MessagesController : Controller
     {
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
+
+        if ((await ResolveAccessAsync(shop, ct))?.CanRespondToCustomers() != true) return Forbid();
 
         var conversation = await _conversations.GetAsync(form.ConversationId, ct);
         if (conversation is null || conversation.ShopId != shop.Id) return NotFound();
@@ -128,6 +141,8 @@ public class MessagesController : Controller
     {
         var shop = await ResolveShopAsync(ct);
         if (shop is null) return RedirectToAction("Register", "Onboarding", new { area = "Vendor" });
+
+        if ((await ResolveAccessAsync(shop, ct))?.CanRespondToCustomers() != true) return Forbid();
 
         var conversation = await _conversations.GetAsync(id, ct);
         if (conversation is null || conversation.ShopId != shop.Id) return NotFound();
