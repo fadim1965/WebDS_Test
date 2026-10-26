@@ -1,0 +1,176 @@
+@model WebDS_Test.Domain.CarrierRemittance
+@inject WebDS_Test.Services.ICurrencyFormatter Money
+@{
+    ViewData["Title"] = $"Remittance {Model.Carrier}/{Model.Reference}";
+}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h4 mb-1">@Model.Carrier / @Model.Reference</h1>
+            <p class="text-muted mb-0">
+                <span class="badge @Model.Status.ToCssClass()">@Model.Status.ToDisplay()</span>
+                &middot; remitted @Model.RemittanceDateUtc.ToString("yyyy-MM-dd")
+                &middot; received @Model.ReceivedUtc.ToString("yyyy-MM-dd HH:mm") by @Model.ReceivedBy
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Index">Back to list</a>
+        </div>
+    </div>
+
+    @if (TempData["Message"] is string msg)
+    {
+        <div class="alert alert-@(TempData["MessageType"] ?? "info") mt-3">@msg</div>
+    }
+
+    <div class="row g-3 mt-1">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Lines (@Model.Lines.Count)</span>
+                    <span class="small text-muted">Expected @Money.Format(Model.ExpectedAmount) &middot; Actual @Money.Format(Model.ActualAmount) &middot; Variance <span class="@(Model.Variance < 0 ? "text-danger" : Model.Variance > 0 ? "text-warning" : "")">@Money.Format(Model.Variance)</span></span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Order</th>
+                                <th>Tracking</th>
+                                <th class="text-end">Expected</th>
+                                <th class="text-end">Actual</th>
+                                <th class="text-end">Variance</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var line in Model.Lines)
+                        {
+                            <tr>
+                                <td>
+                                    @if (line.Order is not null)
+                                    {
+                                        <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@line.Order.Id">@line.Order.OrderNumber</a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">(no order)</span>
+                                    }
+                                </td>
+                                <td class="small text-muted">@(line.TrackingNumber ?? "—")</td>
+                                <td class="text-end">@Money.Format(line.ExpectedAmount)</td>
+                                <td class="text-end">
+                                    <form asp-action="UpdateLine" asp-route-id="@Model.Id" asp-route-lineId="@line.Id" method="post" class="d-flex gap-1 justify-content-end">
+                                        @Html.AntiForgeryToken()
+                                        <input type="number" step="0.01" name="actualAmount" value="@line.ActualAmount" class="form-control form-control-sm" style="width:90px" />
+                                        <input type="hidden" name="note" value="@line.Note" />
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm" title="Save actual amount">Save</button>
+                                    </form>
+                                </td>
+                                <td class="text-end @(line.Variance < 0 ? "text-danger" : line.Variance > 0 ? "text-warning" : "")">@Money.Format(line.Variance)</td>
+                                <td><span class="badge @line.Status.ToCssClass()">@line.Status.ToDisplay()</span></td>
+                                <td class="small text-muted">@line.Note</td>
+                            </tr>
+                        }
+                        @if (Model.Lines.Count == 0)
+                        {
+                            <tr><td colspan="7" class="text-muted">No lines yet. Paste a statement on create, or auto-match delivered orders below.</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">Auto-match delivered orders</div>
+                <div class="card-body">
+                    <form asp-action="AutoMatch" asp-route-id="@Model.Id" method="post" class="row g-2 align-items-end">
+                        @Html.AntiForgeryToken()
+                        <div class="col-md-3">
+                            <label class="form-label small mb-1" for="fromUtc">From (UTC)</label>
+                            <input id="fromUtc" name="fromUtc" type="date" class="form-control form-control-sm"
+                                   value="@DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small mb-1" for="toUtc">To (UTC)</label>
+                            <input id="toUtc" name="toUtc" type="date" class="form-control form-control-sm"
+                                   value="@DateTime.UtcNow.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small mb-1" for="carrier">Carrier (optional)</label>
+                            <input id="carrier" name="carrier" class="form-control form-control-sm" value="@Model.Carrier" />
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-outline-primary btn-sm w-100">Pull delivered COD orders</button>
+                        </div>
+                    </form>
+                    <p class="text-muted small mb-0 mt-2">
+                        Adds every delivered cash-on-delivery order in the window that is not already on this remittance,
+                        with the expected amount from the order and a zero actual amount for you to fill in.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">Summary</div>
+                <div class="card-body small">
+                    <dl class="row mb-0">
+                        <dt class="col-6">Carrier</dt><dd class="col-6">@Model.Carrier</dd>
+                        <dt class="col-6">Reference</dt><dd class="col-6">@Model.Reference</dd>
+                        <dt class="col-6">Bank ref</dt><dd class="col-6">@(Model.BankReference ?? "—")</dd>
+                        <dt class="col-6">Tolerance</dt><dd class="col-6">@Model.Tolerance.ToString("0.00")</dd>
+                        <dt class="col-6">Expected</dt><dd class="col-6">@Money.Format(Model.ExpectedAmount)</dd>
+                        <dt class="col-6">Actual</dt><dd class="col-6">@Money.Format(Model.ActualAmount)</dd>
+                        <dt class="col-6">Variance</dt><dd class="col-6 @(Model.Variance < 0 ? "text-danger" : Model.Variance > 0 ? "text-warning" : "")">@Money.Format(Model.Variance)</dd>
+                    </dl>
+                    @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                    {
+                        <hr class="my-2" />
+                        <div class="text-muted">@Model.Notes</div>
+                    }
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">Actions</div>
+                <div class="card-body d-grid gap-2">
+                    @if (Model.Status is RemittanceStatus.Received or RemittanceStatus.Disputed)
+                    {
+                        <form asp-action="Reconcile" asp-route-id="@Model.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-success w-100">Reconcile</button>
+                        </form>
+                    }
+                    @if (Model.Status != RemittanceStatus.Closed)
+                    {
+                        <form asp-action="Dispute" asp-route-id="@Model.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="note" value="Marked disputed by @User.Identity?.Name" />
+                            <button type="submit" class="btn btn-outline-danger w-100">Mark disputed</button>
+                        </form>
+                        <form asp-action="Close" asp-route-id="@Model.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="note" value="Closed." />
+                            <button type="submit" class="btn btn-outline-secondary w-100">Close</button>
+                        </form>
+                    }
+                    @if (Model.Status is RemittanceStatus.Draft or RemittanceStatus.Received)
+                    {
+                        <form asp-action="Delete" asp-route-id="@Model.Id" method="post"
+                              onsubmit="return confirm('Delete this remittance and all its lines?');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-danger w-100">Delete</button>
+                        </form>
+                    }
+                </div>
+                <div class="card-body pt-0 small text-muted">
+                    Reconciling marks returned orders' vendor credits as reversed and records the
+                    variance. Shortfalls stay as a receivable from the carrier; they do not reduce
+                    what the vendor earned.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

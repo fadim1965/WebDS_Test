@@ -1,0 +1,56 @@
+@model WebDS_Test.Areas.Admin.Controllers.CodRemittanceCreateForm
+@{
+    ViewData["Title"] = "New COD remittance";
+}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h4 mb-1">New COD remittance</h1>
+            <p class="text-muted mb-0">
+                Record a batch of cash the carrier says it paid. Paste one line per order:
+                <code>ORDER-NUMBER AMOUNT NOTE...</code>. The expected amount is taken from the order.
+            </p>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Index">Back to list</a>
+    </div>
+
+    <form asp-action="Create" method="post" class="mt-3">
+        @Html.AntiForgeryToken()
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label" for="Carrier">Carrier</label>
+                <input id="Carrier" name="Carrier" class="form-control" value="@Model.Carrier" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="Reference">Batch / statement reference</label>
+                <input id="Reference" name="Reference" class="form-control" value="@Model.Reference" required />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="BankReference">Bank reference (optional)</label>
+                <input id="BankReference" name="BankReference" class="form-control" value="@Model.BankReference" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="RemittanceDateUtc">Remittance date (UTC)</label>
+                <input id="RemittanceDateUtc" name="RemittanceDateUtc" type="date" class="form-control"
+                       value="@Model.RemittanceDateUtc.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="Tolerance">Tolerance</label>
+                <input id="Tolerance" name="Tolerance" type="number" step="0.01" class="form-control" value="@Model.Tolerance" />
+            </div>
+            <div class="col-md-10">
+                <label class="form-label" for="Notes">Notes</label>
+                <input id="Notes" name="Notes" class="form-control" value="@Model.Notes" />
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="Lines">Statement lines</label>
+                <textarea id="Lines" name="Lines" class="form-control" rows="10" placeholder="ORD-2024-001 120.00&#10;ORD-2024-002 85.50 partial collection">@Model.Lines</textarea>
+                <div class="form-text">One line per order. Amount is what the carrier says it paid for that order.</div>
+            </div>
+        </div>
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary">Record remittance</button>
+            <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+        </div>
+    </form>
+</div>

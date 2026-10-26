@@ -92,6 +92,11 @@ public static class DbSeeder
         // first order page can offer a "cancel/return" action.
         await PostSaleSchema.EnsureAsync(db, ct);
 
+        // Carrier remittances postdate the store too: a cash-on-delivery batch the carrier says it
+        // paid is reconciled against delivered orders, so the tables must exist before the first
+        // remittance is recorded.
+        await CodRemittanceSchema.EnsureAsync(db, ct);
+
         // One standard-rate class so the feature is usable and visible on a fresh store. Products are
         // left unassigned on purpose: an unassigned product falls back to Store:TaxRate, which is the
         // behaviour every order had before this feature existed.

@@ -1,0 +1,80 @@
+@model IReadOnlyList<WebDS_Test.Domain.CarrierRemittance>
+@inject WebDS_Test.Services.ICurrencyFormatter Money
+@{
+    ViewData["Title"] = "COD remittances";
+    var openCount = (int?)ViewData["OpenCount"] ?? 0;
+    var disputedCount = (int?)ViewData["DisputedCount"] ?? 0;
+}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2">
+        <div>
+            <h1 class="h4 mb-1">COD remittances</h1>
+            <p class="text-muted mb-0">
+                Batched cash a carrier says it paid over, reconciled line by line against the orders we
+                expected cash from. A shortfall is the carrier's to make good; a returned order reverses
+                the vendor's credit.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-primary btn-sm" asp-action="Create">New remittance</a>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+        <a class="btn btn-sm @(ViewData["Status"] is null ? "btn-primary" : "btn-outline-secondary")"
+           asp-action="Index">All</a>
+        @foreach (var s in new[] { WebDS_Test.Domain.RemittanceStatus.Received, WebDS_Test.Domain.RemittanceStatus.Disputed, WebDS_Test.Domain.RemittanceStatus.Reconciled, WebDS_Test.Domain.RemittanceStatus.Closed })
+        {
+            <a class="btn btn-sm @(ViewData["Status"]?.ToString() == s.ToString() ? "btn-primary" : "btn-outline-secondary")"
+               asp-action="Index" asp-route-status="@s">@s.ToDisplay()</a>
+        }
+    </div>
+
+    <div class="alert alert-light border mt-3 mb-0 small">
+        Open: <strong>@openCount</strong> &middot; Disputed: <strong>@disputedCount</strong>
+    </div>
+
+    <div class="card mt-3">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Received</th>
+                        <th>Carrier</th>
+                        <th>Reference</th>
+                        <th>Status</th>
+                        <th class="text-end">Lines</th>
+                        <th class="text-end">Expected</th>
+                        <th class="text-end">Actual</th>
+                        <th class="text-end">Variance</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="9" class="text-muted">No remittances yet.</td></tr>
+                }
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td class="small text-muted">@r.ReceivedUtc.ToString("yyyy-MM-dd")</td>
+                        <td>@r.Carrier</td>
+                        <td class="fw-semibold">@r.Reference</td>
+                        <td><span class="badge @r.Status.ToCssClass()">@r.Status.ToDisplay()</span></td>
+                        <td class="text-end">@r.Lines.Count</td>
+                        <td class="text-end">@Money.Format(r.ExpectedAmount)</td>
+                        <td class="text-end">@Money.Format(r.ActualAmount)</td>
+                        <td class="text-end @(r.Variance < 0 ? "text-danger" : r.Variance > 0 ? "text-warning" : "")">
+                            @Money.Format(r.Variance)
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm" asp-action="Details" asp-route-id="@r.Id">Open</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

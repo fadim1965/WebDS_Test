@@ -144,6 +144,7 @@ builder.Services.AddScoped<ITranslator, Translator>();
 
 builder.Services.AddScoped<IVendorLedgerService, VendorLedgerService>();
 builder.Services.AddScoped<IPayoutService, PayoutService>();
+builder.Services.AddScoped<ICodRemittanceService, CodRemittanceService>();
 builder.Services.Configure<PayoutOptions>(builder.Configuration.GetSection(PayoutOptions.SectionName));
 
 builder.Services.AddScoped<IListingModerationService, ListingModerationService>();

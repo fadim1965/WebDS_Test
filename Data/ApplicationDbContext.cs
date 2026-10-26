@@ -35,6 +35,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<ShopListing> ShopListings => Set<ShopListing>();
     public DbSet<VendorLedgerEntry> VendorLedgerEntries => Set<VendorLedgerEntry>();
     public DbSet<VendorPayout> VendorPayouts => Set<VendorPayout>();
+public DbSet<CarrierRemittance> CarrierRemittances => Set<CarrierRemittance>();
+public DbSet<CarrierRemittanceLine> CarrierRemittanceLines => Set<CarrierRemittanceLine>();
 
     // Returns
     public DbSet<ReturnRequest> ReturnRequests => Set<ReturnRequest>();
@@ -233,6 +235,8 @@ public class ApplicationDbContext : DbContext
             e.HasIndex(l => l.SettledUtc);
             // Partial reversals are idempotent per return request, so the link is indexed.
             e.HasIndex(l => l.ReturnRequestId);
+            // Post-sale reversals are idempotent per post-sale request.
+            e.HasIndex(l => l.PostSaleRequestId);
             e.Property(l => l.GrossAmount).HasPrecision(18, 2);
             e.Property(l => l.CommissionAmount).HasPrecision(18, 2);
             e.Property(l => l.NetAmount).HasPrecision(18, 2);
@@ -249,6 +253,11 @@ public class ApplicationDbContext : DbContext
             e.HasOne(l => l.ReturnRequest)
                 .WithMany()
                 .HasForeignKey(l => l.ReturnRequestId)
+                .OnDelete(DeleteBehavior.SetNull);
+            // Same for the post-sale request a reversal belongs to.
+            e.HasOne(l => l.PostSaleRequest)
+                .WithMany()
+                .HasForeignKey(l => l.PostSaleRequestId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
